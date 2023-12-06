@@ -5,6 +5,14 @@ title: Backend documentation
 This document describes the architecture of the main components of the
 OONI infrastructure.
 
+```mermaid
+graph TD;
+    A-->B;
+    A-->C;
+    B-->D;
+    C-->D;
+```
+
 How to develop, test, deploy and monitor them.
 
 The documentation is meant for core contributors.
@@ -1325,7 +1333,6 @@ Entry points:
 The repository goes through the following state machine:
 
 ```mermaid
-
 stateDiagram-v2
     direction LR
     classDef green fill:#eeffee,black,font-weight:bold,stroke-width:2px
@@ -1435,7 +1442,6 @@ It also supports processing old measurements by fetching them from the
 Data flow diagram:
 
 ```mermaid
-
 flowchart LR
 
       A(Probes) --> B(API) --> C(Fastpath HTTP)
@@ -1611,7 +1617,6 @@ table](#tbl:citizenlab) and [citizenlab_flip
 table](#tbl:citizenlab_flip).
 
 ```mermaid
-
 flowchart LR
 
     A(Github repository) --> B(updater)
@@ -1968,8 +1973,7 @@ The primary functions are:
 A summary of the sequence to deploy, drain and destroy a test helper VM:
 
 ```mermaid
-
-    sequenceDiagram
+sequenceDiagram
     Rotation->>Digital Ocean: Spawn VM
     Digital Ocean->>+TH: Spawn
     Rotation-->>+TH: Poll for readiness
