@@ -1,0 +1,21 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" width="184" height="20">
+  <linearGradient id="b" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <mask id="a">
+    <rect width="184" height="20" rx="3" fill="#fff"/>
+  </mask>
+  <g mask="url(#a)">
+    <path fill="#555" d="M0 0h64v20H0z"/>
+    <path fill="#97CA00" d="M64 0h120v20H64z"/>
+    <path fill="url(#b)" d="M0 0h184v20H0z"/>
+  </g>
+  <g fill="#fff" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11">
+    <text x="4" y="15" fill="#010101" fill-opacity=".3">ooni-api</text>
+    <text x="4" y="14">ooni-api</text>
+    <text x="68" y="15" fill="#010101" fill-opacity=".3">1.0.79~pr751-194</text>
+    <text x="68" y="14">1.0.79~pr751-194</text>
+  </g>
+</svg>

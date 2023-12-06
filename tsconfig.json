@@ -1,3 +1,5 @@
 {
-  "extends": "astro/tsconfigs/strict"
+  "ts-node": {
+    "esm": true
+  }
 }
