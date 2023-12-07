@@ -5100,7 +5100,6 @@ Click the arrow on the left to expand each alerting rule.
 
 The list shows:
 
-![editing_alerts](../../../assets/images-backend/grafana_alerts_editing.png)
 
 > **note**
 > When creating alerts it can be useful to add full URLs linking to
@@ -5114,8 +5113,6 @@ To stop notifications create a \"silence\" either:
 2.  by inputting it in inhttps://grafana.ooni.org/alerting/silences
 
 Screenshot:
-
-![adding_silence](../../../assets/images-backend/grafana_alerts_silence.png)
 
 Additionally, the \"Show state history\" button is useful especially
 with flapping alerts.
