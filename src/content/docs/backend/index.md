@@ -9,188 +9,12 @@ How to develop, test, deploy and monitor them.
 
 The documentation is meant for core contributors.
 
+Copyright 2023 ooni.org See the LICENSE.CC0 file for licensing.
+
 If you are reading this document as a MarkDown file on github the
 following button on the top-right menu provides a table of content:
 
 ![toc_button](../../../assets/images-backend/gh_button.png)
-
-## Progress report (to be deleted when finished)
-> **note**
-> TODO delete when finished
-
--   ✓ Create basic general structure
-
--   ✓ Prepare a diagram of the main data flow
-
--   ✓ log management and Vector
-
--   ✓ summarize systemd timers
-
--   ✓ deployer tool
-
--   ✓ Github CI workflows
-
-    -   ✓ [debops-ci tool](#debops-ci-tool)<sub><sup> </sup></sub>🔧
-
-    -   ✓ Debian repo basic structure
-
-    -   ✓ package build
-
-        -   ✓ versioning
-
-    -   ✓ Code [Code documentation generation](#code-documentation-generation)<sub><sup> </sup></sub>🔧
-
-    -   ✓ Mypy
-
-    -   ✓ Fastpath
-
-    -   ✓ geoip
-
-    -   ✓ asn
-
-    -   ✓ API
-
-        -   ✓ app
-
-        -   ✓ auth
-
-        -   ✓ citizenlab
-
-        -   ✓ database
-
-        -   ✓ incidents
-
-        -   ✓ measurements
-
-        -   ✓ measurement feedback
-
-        -   ✓ ooni_api_uploader
-
-        -   ✓ oonirun
-
-        -   ✓ prio
-
-        -   ✓ private
-
-        -   ✓ probe_services
-
-        -   ✓ rate_limit_quotas
-
-        -   ✓ urlparams
-
-        -   ✓ utils
-
-        -   ✓ views
-
--   ✓ describe components not written by ooni
-
-    -   ✓ [Grafana](#grafana)<sub><sup> </sup></sub>🔧 overview
-
-        -   ✓ Describe the most useful dashboards in
-            <https://grafana.ooni.org/> what charts are useful for
-            troubleshooting
-
-    -   ✓ [HaProxy](#haproxy)<sub><sup> </sup></sub>⚙
-
-    -   ✓ [Nginx](#nginx)<sub><sup> </sup></sub>⚙
-
-    -   ✓ [Dehydrated](#dehydrated)<sub><sup> </sup></sub>⚙
-
-    -   ✓ [Ansible](#ansible)<sub><sup> </sup></sub>🔧
-
-    -   ✓ [Prometheus](#prometheus)<sub><sup> </sup></sub>🔧
-
-    -   ✓ [Grafana](#grafana)<sub><sup> </sup></sub>🔧
-
-    -   ✓ [Etckeeper](#etckeeper)<sub><sup> </sup></sub>🔧
-
-    -   ✓ [ClickHouse instance for logs](#clickhouse-instance-for-logs)<sub><sup> </sup></sub>⚙
-
-    -   ✓ [CitizenLab test list
-        updater](#comp:citizenlab_test_lists_updater)
-
-    -   ✓ [ClickHouse](#clickhouse)<sub><sup> </sup></sub>⚙
-
-    -   ✓ [Jupyter Notebook](#jupyter-notebook)<sub><sup> </sup></sub>🔧
-
--   ✓ Describe the contents of the <https://github.com/ooni/backend/> in
-    the master branch. Focus on:
-
-    -   ✓ [Fastpath](#fastpath)<sub><sup> </sup></sub>⚙
-
-    -   ✓ [API](#api)<sub><sup> </sup></sub>⚙
-
-        -   ✓ Where the tor targets (bridges and directory authorities)
-            are stored to be given to probes
-
-        -   ✓ How you can update the tor targets to include or exclude
-            certain entries
-
-    -   ✓ [analysis package](#analysis-package)<sub><sup> </sup></sub>📦 package containing various
-        timer that update fingerprints, CitizenLab etc
-
-    -   ✓ test helper rotation
-
--   ✓ Describe the software deployment process and provide examples
-
-    -   ✓ CI build process
-
-    -   ✓ deployment steps and how to do rollbacks
-
-    -   ✓ monitoring during deployment
-
-    -   ❏ basics on how to do OS updates
-
--   ✓ Provide examples of troubleshooting backend issues using logs
-
--   ✓ Provide examples of adding features or making changes
-
-    -   ✓ To the API
-
-    -   ✓ To the fastpath
-
-    -   ✓ To other scripts
-
-    -   ✓ <https://github.com/ooni/backend/issues/761>
-
-    -   ❏ To grafana
-
-    -   ❏ Adding grafana alerts
-
-    -   ✓ add runbook to manage feature flags
-        <https://github.com/ooni/backend/pull/776>
-
--   ✓ diagram inputs to the API from CitizenLab using mermaid
-    [CitizenLab test list updater](#citizenlab-test-list-updater)<sub><sup> </sup></sub>⚙
-
--   ✓ diagram [Fingerprint updater](#fingerprint-updater)<sub><sup> </sup></sub>⚙
-
--   ✓ diagram [ASN metadata updater](#asn-metadata-updater)<sub><sup> </sup></sub>⚙
-
--   ✓ diagram [Test helper rotation](#test-helper-rotation)<sub><sup> </sup></sub>⚙
-
--   ✓ Summarize the notebooks on <https://jupyter.ooni.org/> that I use
-    more often
-
--   ✓ Document debugging/metrics scripts manually executed on
-    backend-fsn
-
--   ✓ passwords/keys private repo
-
--   ✓ ooni bridges
-
--   ✓ runbook: adding new tests
-
--   ✓ runbook: add fingerprints
-
--   Other
-
-    -   ❏ Integrate blockdiag source in markdown document on final
-        version
-
-    -   ❏ Document high priority tasks and github issues
-
-TODO add images
 
 # Conventions
 A few shorthands used in the document:
@@ -278,6 +102,28 @@ as files on disk, files on S3 or records in database tables.
 
 ![Diagram](https://kroki.io/blockdiag/svg/eNrFlD1PwzAQhvf-CstdSTOwFYEEKkgMSJUQU4Uqf5wbU8c2_kCVEP-d2E3SlrZjQzbfG_t9fL47qgxbc0lW6HuEOAgSVVj6ilhAt8iZqDlwajY3IzR3hoJHC2aUcY2Ix0JA8-ErVDkQKVKFYP20LFcyVJFOmKlLY7QsKWFr0LzghsUadCBBGl1SZWhZE6k7fXmgT2o-ttkTvzf2jxvb-ILbB0j2QmQZv16jD2-0wmjR4YNS0nq4IF92LIRULWSisMYHRvSgHK1nCzF72KYCBfof6QiEKuhJBPHBklANDtMZ7_Nw6dfoM0KEQVGSbbG1zRhvTSkTDg6fKOYLYtRAfHSQYkXsEDLQU5urgYG6J0oQ_YAp7hC-nz9Pt2vkwX1J1vRXFnagaXVUXv3el91V253d_MDpvmfP3y-Q_rA-Vzm0GzSn3Q4fuN3RDYVj8aBZj7v3vMdJ1D9__fwCHdgDSg==)
 
+```blockdiag
+blockdiag {
+ default_shape = roundedbox;
+ Probes [color = "#ffeeee", href = "@@probes"];
+ Explorer [color = "#eeeeff"];
+ "S3 jsonl" [shape = ellipse, href = "@@jsonl-files"];
+ "S3 postcan" [shape = ellipse, href = "@@postcans"];
+ "DB jsonl tbl" [shape = ellipse, href = "@@jsonl-table"];
+ "DB fastpath tbl" [shape = ellipse, href = "@@fastpath-table"];
+ "disk queue" [shape = ellipse, href = "@@disk-queue"];
+ "Uploader" [color = "#eeeeff", href = "@@measurement-uploader"];
+ "Fastpath" [color = "#eeeeff", href = "@@fastpath"];
+
+ Probes -> "API: Probe services" -> "Fastpath" -> "DB fastpath tbl" -> "API: Measurements" -> "Explorer";
+ "API: Probe services" -> "disk queue" -> "API: uploader" -> "S3 jsonl" -> "API: Measurements";
+ "Uploader" -> "S3 postcan";
+ "Uploader" -> "DB jsonl tbl";
+ "DB jsonl tbl" -> "API: Measurements";
+ "disk queue" -> "API: Measurements";
+}
+```
+
 Ellipses represent data; rectangles represent processes. Click on the
 image and then click on each shape to see related documentation.
 
@@ -351,7 +197,9 @@ each shape to see related documentation.
 
 In Python the statsd library is used e.g.:
 
-    metrics = statsd.StatsClient("localhost", 8125, prefix="ooni-api")
+```python
+metrics = statsd.StatsClient("localhost", 8125, prefix="ooni-api")
+```
 
 [Prometheus](#tool:prometheus) and [Grafana](#grafana)<sub><sup> </sup></sub>🔧 provide
 historical charts for more than 90 days and are useful to investigate
@@ -359,6 +207,7 @@ long-term trends.
 
 [Netdata](#netdata)<sub><sup> </sup></sub>🔧 provides a web UI with real-time metrics. See
 the dedicated subchapter for details.
+
 
 ## Prometheus
 Prometheus <https://prometheus.io/> is a popular monitoring system and
@@ -371,6 +220,7 @@ following playbook:
 Most of the metrics are collected by scraping Prometheus endpoints,
 Netdata, and using node exporter. The web UI is accessible at
 <https://prometheus.ooni.org>
+
 
 ## Grafana dashboards
 There is a number of dashboards on [Grafana](#grafana)<sub><sup> </sup></sub>🔧 at
@@ -392,13 +242,14 @@ The dashboards are used for:
 
 -   Investigating alerts and troubleshooting incidents
 
+
 ### Alerting
 Alerts from [Grafana](#tool:grafana) and [Prometheus](#prometheus)<sub><sup> </sup></sub>🔧
-are sent to the #ooni-bots Slack channel
-<https://app.slack.com/client/T37Q8EGUU/C38EJ0CET> by a bot.
+are sent to the [#ooni-bots](#topic:oonibots) [Slack](#slack)<sub><sup> </sup></sub>🔧
+channel by a bot.
 
-Slack can be configured to provide desktop notification from browsers
-and audible notifications on smartphones.
+[Slack](#slack)<sub><sup> </sup></sub>🔧 can be configured to provide desktop notification
+from browsers and audible notifications on smartphones.
 
 Alert flow:
 
@@ -412,6 +263,9 @@ using [Ansible](#ansible)<sub><sup> </sup></sub>🔧.
 The silences list shows if any alert has been temporarily silenced:
 <https://grafana.ooni.org/alerting/silences>
 
+See [Grafana editing](#grafana-editing)<sub><sup> </sup></sub>📒 and [Managing Grafana alert
+rules](#run:grafana_alerts) for details.
+
 There are also many dashboards and alerts configured in [Jupyter
 Notebook](#tool:jupyter). These are meant for metrics that require more
 complex algorithms, predictions and SQL queries that cannot be
@@ -422,11 +276,13 @@ hostname using fields on the top left.
 
 Here is an overview of the most useful dashboards:
 
+
 ### API and fastpath
 <https://grafana.ooni.org/d/l-MQSGonk/api-and-fastpath-multihost?orgId=1&var-avgspan=1h&var-host=backend-fsn.ooni.org>
 
 This is the most important dashboard showing the metrics of the
 [API](#comp:api) and the [Fastpath](#fastpath)<sub><sup> </sup></sub>⚙.
+
 
 ### Test-list repository in the API
 <https://grafana.ooni.org/d/siWZslSVk/api-test-list-repo?orgId=1>
@@ -434,11 +290,13 @@ This is the most important dashboard showing the metrics of the
 Shows timings around the git repository checked out by the
 [API](#api)<sub><sup> </sup></sub>⚙ that contains the test lists.
 
+
 ### Measurement uploader dashboard
 <https://grafana.ooni.org/d/ma3Q6GzVz/api-uploader?orgId=1>
 
 Metrics, timing and data transferred by the [Measurement
 uploader](#comp:uploader)
+
 
 ### Fingerprint updater dashboard
 <https://grafana.ooni.org/d/JNlK8ox4z/fingerprints>
@@ -446,10 +304,12 @@ uploader](#comp:uploader)
 Metrics and timing from the [Fingerprint
 updater](#comp:fingerprints_updater)
 
+
 ### ClickHouse dashboard
 <https://grafana.ooni.org/d/thEkJB_Mz/clickhouse?orgId=1>
 
 ClickHouse-specific performance metrics
+
 
 ### HaProxy dashboard
 <https://grafana.ooni.org/d/ba33e4df-d686-4459-b37d-3966af14ad00/haproxy>
@@ -457,11 +317,13 @@ ClickHouse-specific performance metrics
 Basic metrics from [HaProxy](#haproxy)<sub><sup> </sup></sub>⚙ load balancers. Used for
 [OONI bridges](#ooni-bridges)<sub><sup> </sup></sub>⚙.
 
+
 ### TLS certificate dashboard
 <https://grafana.ooni.org/d/-1mr7sWMk/ssl-certificates>
 
 Certificate expiration times. There are alerts configured in
 [Grafana](#grafana)<sub><sup> </sup></sub>🔧 to alert on expiring certificates.
+
 
 ### Test helpers dashboard
 <https://grafana.ooni.org/d/Dn1R7QEnz/test-helpers>
@@ -469,17 +331,20 @@ Certificate expiration times. There are alerts configured in
 Status, uptime and load metrics from the [Test
 helpers](#comp:test_helpers).
 
+
 ### Database backup dashboard
 <https://grafana.ooni.org/d/aQjQYhoGz/db-backup>
 
 Metrics, timing and data transferred by [Database backup
 tool](#comp:db_backup)
 
+
 ### Event detector dashboard
 <https://grafana.ooni.org/d/FH2TmwFVz/event-detection?orgId=1&refresh=1m>
 
 Basic metrics from the [social media blocking event
 detector](#comp:detector)
+
 
 ### GeoIP MMDB database dashboard
 <https://grafana.ooni.org/d/0e6eROj7z/geoip?orgId=1&from=now-7d&to=now>
@@ -492,10 +357,12 @@ Also see [Geolocation script](#geolocation-script)<sub><sup> </sup></sub>🐍
 
 See [GeoIP downloader](#geoip-downloader)<sub><sup> </sup></sub>⚙
 
+
 ### Host clock offset dashboard
 <https://grafana.ooni.org/d/9dLa-RSnk/host-clock-offset?orgId=1>
 
 Measures NTP clock sync and alarms on big offsets
+
 
 ### Netdata-specific dashboard
 <https://grafana.ooni.org/d/M1rOa7CWz/netdata?orgId=1&var-instance=backend-fsn.ooni.org:19999>
@@ -503,41 +370,81 @@ Measures NTP clock sync and alarms on big offsets
 Shows all the metrics captured by [Netdata](#netdata)<sub><sup> </sup></sub>🔧 - useful for
 in-depth performance investigation.
 
+
 ### ASN metadata updater dashboard
 <https://grafana.ooni.org/d/XRihZL-Vk/ansmeta-update?orgId=1&from=now-7d>
 
 Progress, runtime and table size of the [ASN metadata
 updater](#comp:asnmeta_updater)
 
+
+## Netdata
+Netdata <https://www.netdata.cloud/> is a monitoring agent that runs
+locally on the backend servers. It exports host and [Application
+metrics](#topic:appmetrics) to [Prometheus](#prometheus)<sub><sup> </sup></sub>🔧.
+
+It also provides a web UI that can be accessed on port 19999. It can be
+useful during development, performance optimization and debugging as it
+provides metrics with higher time granularity (1 second) and almost no
+delay.
+
+Netdata is not exposed on the Internet for security reasons and can be
+accessed only when nededed by setting up port forwarding using SSH. For
+example:
+
+```bash
+ssh ams-pg-test.ooni.org -L 19998:127.0.0.1:19999
+```
+
+Netdata can also be run on a development desktop and be accessed locally
+in order to explore application metrics without having to deploy
+[Prometheus](#tool:prometheus) and [Grafana](#grafana)<sub><sup> </sup></sub>🔧.
+
+See [Netdata-specific dashboard](#netdata-specific-dashboard)<sub><sup> </sup></sub>📊 of an example of native
+Netdata metrics.
+
 # Log management
 All components of the backend are designed to output logs to Systemd's
-journald. They usually log using the component name as unit name.
-Sometimes you might have to use `--identifier <name>` instead.
+journald. They usually log using the component name as Systemd unit
+name.
+
+Sometimes you might have to use `--identifier <name>` instead for
+scripts that are not run as Systemd units.
 
 Journald automatically indexes logs by time, unit name and other items.
 This allows to quickly filter logs during troubleshooting, for example:
 
-    sudo journalctl -u ooni-api --since '10 m ago'
+```bash
+sudo journalctl -u ooni-api --since '10 m ago'
+```
 
 Or follow live logs using e.g.:
 
-    sudo journalctl -u nginx -f
+```bash
+sudo journalctl -u nginx -f
+```
 
 Sometimes it is useful to show milliseconds in the timestamps:
 
-    sudo journalctl -f -u ooni-api -o short-precise
+```bash
+sudo journalctl -f -u ooni-api -o short-precise
+```
 
 The logger used in Python components also sets additional fields,
 notably CODE_FUNC and CODE_LINE
 
 Available fields can be listed using:
 
-    sudo journalctl -f -u ooni-api  -N | sort
+```bash
+sudo journalctl -f -u ooni-api  -N | sort
+```
 
 It is possible to filter by those fields. It comes very handy for
 debugging e.g.:
 
-    sudo journalctl -f -u ooni-api CODE_FUNC=open_report
+```bash
+sudo journalctl -f -u ooni-api CODE_FUNC=open_report
+```
 
 Every host running backend services also sends host to
 monitoring.ooni.org using [Vector](#vector)<sub><sup> </sup></sub>🔧.
@@ -558,6 +465,14 @@ playbook:
 See [Logs from FSN notebook](#logs-from-fsn-notebook)<sub><sup> </sup></sub>📔 and [Logs investigation
 notebook](#nb:logs2)
 
+## Slack
+[Slack](https://slack.com/) is used for team messaging and automated
+alerts at the following instance: <https://openobservatory.slack.com/>
+
+### #ooni-bots
+`#ooni-bots` is a [Slack](#slack)<sub><sup> </sup></sub>🔧 channel used for automated
+alerts: <https://app.slack.com/client/T37Q8EGUU/C38EJ0CET>
+
 # Systemd timers
 Some backend components like the API and Fastpath run as daemons. Many
 other run as Systemd timers at various intervals.
@@ -569,7 +484,9 @@ initialization and shutdown at every run.
 
 To show the existing timers and their next start time run:
 
-    systemctl list-timers
+```bash
+systemctl list-timers
+```
 
 ## Summary of timers
 Here is a summary of the most important timers used in the backend:
@@ -589,7 +506,9 @@ Ooni-developed timers have a matching unit file with .service extension.
 
 To show the existing timers and their next start time run:
 
-    systemctl list-timers
+```bash
+systemctl list-timers
+```
 
 This can be useful for debugging.
 
@@ -600,6 +519,8 @@ is a simple script that provides ACME support for Letsencrypt. It's
 integrated with Nginx or HaProxy with custom configuration or a small
 script as \"glue\".
 
+[Source](https://github.com/ooni/sysadmin/blob/master/ansible/roles/dehydrated/templates/dehydrated.timer)
+
 ## Detector timer
 Runs the [social media blocking event detector](#social-media-blocking-event-detector)<sub><sup> </sup></sub>⚙. It is
 installed by the [detector package](#detector-package)<sub><sup> </sup></sub>📦.
@@ -608,10 +529,14 @@ installed by the [detector package](#detector-package)<sub><sup> </sup></sub>�
 Runs the [Measurement uploader](#measurement-uploader)<sub><sup> </sup></sub>⚙. It is installed by the
 [analysis package](#analysis-package)<sub><sup> </sup></sub>📦. Runs `/usr/bin/ooni_api_uploader.py`
 
+[Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/debian/ooni-api-uploader.timer)
+
 ## ooni-db-backup timer
 Runs the [Database backup tool](#database-backup-tool)<sub><sup> </sup></sub>⚙ as
 `/usr/bin/ooni-db-backup` Also installed by the [analysis
 package](#pkg:analysis).
+
+[Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/debian/ooni-db-backup.timer)
 
 ## ooni-download-geoip timer
 Fetches GeoIP databases, installed by the [ooni-api](#api)<sub><sup> </sup></sub>⚙. Runs
@@ -621,21 +546,31 @@ Monitored with the [GeoIP dashboard](#geoip-mmdb-database-dashboard)<sub><sup> <
 
 See [GeoIP downloader](#geoip-downloader)<sub><sup> </sup></sub>⚙
 
+[Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/debian/ooni-download-geoip.timer)
+
 ## ooni-rotation timer
 Runs the test helper rotation script, installed by the [analysis
 package](#pkg:analysis). Runs `/usr/bin/rotation`
+
+[Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/debian/ooni-rotation.timer)
 
 ## ooni-update-asn-metadata timer
 Fetches [ASN](#asn)<sub><sup> </sup></sub>💡 metadata, installed by the [analysis
 package](#pkg:analysis). Runs `/usr/bin/analysis --update-asnmeta`
 
+[Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/debian/ooni-update-asn-metadata.timer)
+
 ## ooni-update-citizenlab
 Fetches CitizenLab data from GitHub, installed by the [analysis
 package](#pkg:analysis). Runs `/usr/bin/analysis --update-citizenlab`
 
+[Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/debian/ooni-update-citizenlab.timer)
+
 ## ooni-update-fingerprints
 Fetches fingerprints from GitHub, installed by the [analysis
 package](#pkg:analysis). Runs `/usr/bin/analysis --update-fingerprints`
+
+[Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/debian/ooni-update-fingerprints.timer)
 
 # Nettest names
 Nettest specifications are kept at
@@ -1892,10 +1827,7 @@ The configuration is stored in
 
 The following diagram shows the load balancing topology:
 
-```mermaid
-
-```
-
+TODO add bridges diagram?
 
 In the diagram caching for the API and proxying for various services is
 still done by Nginx for legacy reasons but can be moved to HaProxy to
@@ -1969,7 +1901,7 @@ A summary of the sequence to deploy, drain and destroy a test helper VM:
 
 ```mermaid
 
-    sequenceDiagram
+sequenceDiagram
     Rotation->>Digital Ocean: Spawn VM
     Digital Ocean->>+TH: Spawn
     Rotation-->>+TH: Poll for readiness
@@ -2147,7 +2079,7 @@ This manual supersedes
 <https://github.com/ooni/sysadmin/blob/master/README.md>
 
 ### Installation and setup
-Install Ansible using a Python virtualenv or OS packages. Ensure the
+Install Ansible using a OS packages or a Python virtualenv. Ensure the
 same major+minor version is used across the team.
 
 Secrets are stored in vaults using the `ansible/vault` script as a
@@ -2163,6 +2095,8 @@ secret and inventory.
 In order to access secrets stored inside of the vault, you will need a
 copy of the vault password encrypted with your PGP key. This file should
 be stored inside of `~/.ssh/ooni-sysadmin.vaultpw.gpg`.
+
+<https://github.com/ooni/sysadmin/blob/master/ansible/roles/base-bookworm/meta/main.yml>
 
 ### SSH Configuration
 You should configure your `~/.ssh/config` with the following:
@@ -2232,6 +2166,65 @@ close as possible to the ansible step that deploys a service. For
 example:
 <https://github.com/ooni/sysadmin/blob/master/ansible/roles/base-bookworm/tasks/main.yml#L110>
 
+### Roles layout
+Ansible playbooks use multiple roles (see
+[example](https://github.com/ooni/sysadmin/blob/master/ansible/deploy-backend.yml#L46))
+to deploy various components.
+
+Few roles use the `meta/main.yml` file to depend on other roles. See
+[example](https://github.com/ooni/sysadmin/blob/master/ansible/roles/ooni-backend/meta/main.yml)
+
+> **note**
+> The latter method should be used sparingly because ansible does not
+> indicate where each task in a playbook is coming from.
+
+A diagram of the role dependencies for the deploy-backend.yml playbook:
+
+```mermaid
+
+flowchart LR
+        A(deploy-backend.yml) --> B(base-bullseye)
+        B -- meta --> G(adm)
+        A --> F(nftables)
+        A --> C(nginx-buster)
+        A --> D(dehydrated)
+        D -- meta --> C
+        E -- meta --> F
+        A --> E(ooni-backend)
+        style B fill:#eeffee
+        style C fill:#eeffee
+        style D fill:#eeffee
+        style E fill:#eeffee
+        style F fill:#eeffee
+        style G fill:#eeffee
+```
+
+
+A similar diagram for deploy-monitoring.yml:
+
+```mermaid
+
+flowchart LR
+        B -- meta --> G(adm)
+        M(deploy-monitoring.yml) --> B(base-bookworm)
+        M --> O(ooca-cert)
+        M --> F(nftables)
+        M --> D(dehydrated) -- meta --> N(nginx-buster)
+        M --> P(prometheus)
+        M --> X(blackbox-exporter)
+        M --> T(alertmanager)
+        style B fill:#eeffee
+        style D fill:#eeffee
+        style F fill:#eeffee
+        style G fill:#eeffee
+        style N fill:#eeffee
+        style O fill:#eeffee
+        style P fill:#eeffee
+        style T fill:#eeffee
+        style X fill:#eeffee
+```
+
+
 ### Monitoring deployment runbook
 The monitoring stack is deployed and configured by
 [Ansible](#tool:ansible) on the [monitoring.ooni.org](#monitoring.ooni.org)<sub><sup> </sup></sub>🖥
@@ -2264,8 +2257,8 @@ deployed as `/etc/nginx/monitoring.htpasswd` from
 
 Steps:
 
-1.  Review [Ansible playbooks summary](#ansible-playbooks-summary)<sub><sup> </sup></sub>📒 and [Grafana
-    dashboards](#topic:dashboards)
+1.  Review [Ansible playbooks summary](#ansible-playbooks-summary)<sub><sup> </sup></sub>📒, [Deploying a new
+    host](#run:newhost) [Grafana dashboards](#grafana-dashboards)<sub><sup> </sup></sub>💡.
 
 2.  Run `./play deploy-monitoring.yml -l monitoring.ooni.org --diff -C`
     and review the output
@@ -2338,15 +2331,18 @@ To deploy a new host:
 5.  Review the `inventory.yml` file and git-commit it
 
 6.  Deploy the required stack. Run ansible it test mode first. For
-    example:
+    example this would deploy a backend host:
 
-        ./play deploy-backend.yml --diff -l <name>.ooni.org -t api -C
-        ./play deploy-backend.yml --diff -l <name>.ooni.org -t api
+        ./play deploy-backend.yml --diff -l <name>.ooni.org -C
+        ./play deploy-backend.yml --diff -l <name>.ooni.org
 
 7.  Update [Prometheus](#prometheus)<sub><sup> </sup></sub>🔧 by following [Monitoring
     deployment runbook](#run:deploy_monitoring)
 
 8.  git-push the commits
+
+Also see [Monitoring deployment runbook](#monitoring-deployment-runbook)<sub><sup> </sup></sub>📒 for an
+example of deployment.
 
 # DNS and Domains
 The primary domains used by the backend are:
@@ -2683,12 +2679,16 @@ This subsection describes how to run queries against
 [ClickHouse](#clickhouse)<sub><sup> </sup></sub>⚙. You can run queries from [Jupyter
 Notebook](#tool:jupyter) or from the CLI:
 
+```bash
     ssh <backend_host>
     $ clickhouse-client
+```
 
 Prefer using the default user when possible. To log in as admin:
 
+```bash
     $ clickhouse-client -u admin --password <redacted>
+```
 
 > **note**
 > Heavy queries can impact the production database. When in doubt run them
@@ -2803,7 +2803,9 @@ A quick way to identify the account ID an user is to extract logs from
 the [API](#api)<sub><sup> </sup></sub>⚙ either from the backend host or using [Logs from
 FSN notebook](#nb:logs)
 
-    backend-fsn:~$ sudo journalctl --since '5 min ago' -u ooni-api | grep 'SELECT role FROM accounts WHERE account_id' -C5
+```bash
+sudo journalctl --since '5 min ago' -u ooni-api | grep 'SELECT role FROM accounts WHERE account_id' -C5
+```
 
 Example output:
 
@@ -2958,13 +2960,14 @@ for long-term trends
 
 \@backend: monitor
 <https://jupyter.ooni.org/view/notebooks/jupycron/autorun_android_probe_release.html>
-frequently during the first 24h and report any drop on Slack
+frequently during the first 24h and report any drop on
+[Slack](#slack)<sub><sup> </sup></sub>🔧
 
 \@probe: wait at least 24h then release the probe for all users
 
 \@backend: monitor
 <https://jupyter.ooni.org/view/notebooks/jupycron/autorun_android_probe_release.html>
-daily for 14 days and report any drop on Slack
+daily for 14 days and report any drop on [Slack](#slack)<sub><sup> </sup></sub>🔧
 
 \@probe: wait at least 24h then poke \@media to announce the release
 
@@ -2993,13 +2996,14 @@ for long-term trends
 
 \@backend: monitor
 \[jupyter\](<https://jupyter.ooni.org/view/notebooks/jupycron/autorun_cli_probe_release.html>)
-frequently during the first 24h and report any drop on Slack
+frequently during the first 24h and report any drop on
+[Slack](#slack)<sub><sup> </sup></sub>🔧
 
 \@probe: wait at least 24h then release the probe for all users
 
 \@backend: monitor
 \[jupyter\](<https://jupyter.ooni.org/view/notebooks/jupycron/autorun_cli_probe_release.html>)
-daily for 14 days and report any drop on Slack
+daily for 14 days and report any drop on [Slack](#slack)<sub><sup> </sup></sub>🔧
 
 \@probe: wait at least 24h then poke \@media to announce the release
 
@@ -3050,6 +3054,12 @@ Summarize the subnets calling the API:
      11 <redacted subnet>
      11 <redacted subnet>
      10 <redacted subnet>
+
+To block IP addresses or subnets see [Nginx](#nginx)<sub><sup> </sup></sub>⚙ or
+[HaProxy](#haproxy)<sub><sup> </sup></sub>⚙, then configure the required file in
+[Ansible](#ansible)<sub><sup> </sup></sub>🔧 and deploy.
+
+Also see [Limiting scraping](#limiting-scraping)<sub><sup> </sup></sub>📒.
 
 ## Aggregation cache monitoring
 To monitor cache hit/miss ratio using StatsD metrics the following
@@ -3447,22 +3457,26 @@ functions:
     to send an alert through alertmanager ([Grafana](#grafana)<sub><sup> </sup></sub>🔧).
 
 -   `send_slack_msg(title, msg, color="3AA3E3")` to send messages
-    directly to Slack.
+    directly to [Slack](#slack)<sub><sup> </sup></sub>🔧.
 
 -   `send_alert_through_ntfy(title, msg, priority="urgent", tags="warning")`
     to send alerts directly using <https://ntfy.sh/> - see [Redundant
     notifications](#tool:ntfy) for details.
 
+Confusingly, `alertmanager_fire_alert` needs an alarm duration to be set
+when called.
+
 > **note**
-> Confusingly, `alertmanager_fire_alert` needs an alarm duration to be set
-> when called. `send_slack_msg` can be used in addition to provide more
-> details and subsequent updates to an existing alert. Additionally,
-> `send_slack_msg` can deliver clickable links.
+> `send_slack_msg` can be used in addition to provide more details and
+> subsequent updates to an existing alert.
+
+Additionally, `send_slack_msg` can deliver clickable links.
 
 > **note**
 > When creating new alerts it is helpful to include full links to the
-> automated notebook generating the alert and its HTML output. See
-> [Jupycron](#jupycron)<sub><sup> </sup></sub>🔧 for details.
+> automated notebook generating the alert and its HTML output.
+
+See [Jupycron](#jupycron)<sub><sup> </sup></sub>🔧 for details.
 
 ### Jupycron
 Jupycron is a Python script that runs Jupyter notebooks automatically.
@@ -3530,13 +3544,17 @@ failure rate notebook](#nb:test_helper_failure_rate)
 This automated notebook performs a correlation of test failures and the
 location of [Test helpers](#test-helpers)<sub><sup> </sup></sub>⚙.
 
+It sends alerts directly to [Slack](#slack)<sub><sup> </sup></sub>🔧.
+
 Notebook:
 <https://jupyter.ooni.org/notebooks/notebooks/autorun_test_helper_failure_rate_alarm.ipynb>
 
 Output:
 <https://jupyter.ooni.org/view/notebooks/jupycron/autorun_test_helper_failure_rate_alarm.html>
 
-Also see [Test helpers notebook](#test-helpers-notebook)<sub><sup> </sup></sub>📔
+Also see [Test helpers notebook](#test-helpers-notebook)<sub><sup> </sup></sub>📔, [Test helper
+rotation runbook](#run:test_helper_rotation) and [Test helpers failure
+runbook](#run:test_helpers)
 
 ### Test helpers notebook
 This notebook provides tables and charts to investigate the general
@@ -3592,7 +3610,7 @@ Output:
 ### Monitor blocking event detections notebook
 This automated notebook monitor the [Social media blocking event
 detector](#comp:detector) creating a summary table with clickable links
-to events. It also sends notification messages on Slack.
+to events. It also sends notification messages on [Slack](#slack)<sub><sup> </sup></sub>🔧.
 
 Notebook:
 <https://jupyter.ooni.org/notebooks/notebooks/autorun_event_detector_alerts.ipynb>
@@ -3691,6 +3709,7 @@ This is a non-automated notebook used to summarize heavy queries in
 > The `system.query_log` table grows continuously and might be trimmed or
 > emptied using `TRUNCATE` to free disk space.
 
+
 ### Priorities and weights notebook
 Notebooks to investigate prioritization. See [Priorities and
 weights](#topic:weights)
@@ -3699,11 +3718,15 @@ weights](#topic:weights)
 
 <https://jupyter.ooni.org/notebooks/notebooks/2022%20test-list%20URL%20input%20prioritization%20experiments.ipynb>
 
+
 ### Campaign investigation notebook
 A test campaign has been monitored with the following notebook. It could
 be tweaked and improved for other campaigns.
+To reuse it copy it to a new notebook and update the queries. Rerun all cells.
+The notebook will show how the measurement quantity and coverage increased.
 
-[federico](https://jupyter.ooni.org/notebooks/notebooks/2023-05-18%20)%20TL%20campaign.ipynb
+<https://jupyter.ooni.org/notebooks/notebooks/2023-05-18%20TL%20campaign.ipynb>
+
 
 ## Grafana
 Grafana <https://grafana.com/> is a popular platform for monitoring and
@@ -3712,36 +3735,8 @@ alarming.
 It is deployed on [monitoring.ooni.org](#monitoring.ooni.org)<sub><sup> </sup></sub>🖥 by
 [Ansible](#ansible)<sub><sup> </sup></sub>🔧 and lives at <https://grafana.ooni.org/>
 
-### Grafana backup
-The Grafana SQLite database can be dumped using:
-
-    monitoring:~$ sqlite3 -line /var/lib/grafana/grafana.db '.dump' > grafana_dump.sql
-
-Future implementation is tracked in: [Implement Grafana dashboard and
-alarms backup](https://github.com/ooni/backend/issues/770)
-
-## Netdata
-Netdata <https://www.netdata.cloud/> is a monitoring agent that runs
-locally on the backend servers. It exports host and [Application
-metrics](#topic:appmetrics) to [Prometheus](#prometheus)<sub><sup> </sup></sub>🔧.
-
-It also provides a web UI that can be accessed on port 19999. It can be
-useful during development, performance optimization and debugging as it
-provides metrics with higher time granularity (1 second) and almost no
-delay.
-
-Netdata is not exposed on the Internet for security reasons and can be
-accessed only when nededed by setting up port forwarding using SSH. For
-example:
-
-    ssh ams-pg-test.ooni.org -L 19998:127.0.0.1:19999
-
-Netdata can also be run on a development desktop and be accessed locally
-in order to explore application metrics without having to deploy
-[Prometheus](#tool:prometheus) and [Grafana](#grafana)<sub><sup> </sup></sub>🔧.
-
-See [Netdata-specific dashboard](#netdata-specific-dashboard)<sub><sup> </sup></sub>📊 of an example of native
-Netdata metrics.
+See [Grafana backup runbook](#grafana-backup-runbook)<sub><sup> </sup></sub>📒 and [Grafana
+editing](#run:grafana_edit)
 
 ## ClickHouse instance for logs
 There is an instance of ClickHouse deployed on
@@ -3879,7 +3874,9 @@ the writes are completed. This is used by the [API](#api)<sub><sup> </sup></sub>
 helper rotation](#comp:test_helper_rotation) and other components. The
 SQL syntax is:
 
-    EXCHANGE TABLES <a> AND <b>
+```sql
+EXCHANGE TABLES <a> AND <b>
+```
 
 ### accounts table
 Used for authentication. Assignes roles to accounts (by account id). The
@@ -3888,14 +3885,16 @@ such, the table is currently tracking only admin roles.
 
 Schema:
 
-    CREATE TABLE default.accounts
-    (
-        `account_id` FixedString(32),
-        `role` String,
-        `update_time` DateTime DEFAULT now()
-    )
-    ENGINE = EmbeddedRocksDB
-    PRIMARY KEY account_id
+```sql
+CREATE TABLE default.accounts
+(
+    `account_id` FixedString(32),
+    `role` String,
+    `update_time` DateTime DEFAULT now()
+)
+ENGINE = EmbeddedRocksDB
+PRIMARY KEY account_id
+```
 
 To create and update account roles see:
 
@@ -4447,18 +4446,20 @@ notebook](#nb:click_q)
 
 To investigate table and index sizes the following query is useful:
 
-    SELECT
-        concat(database, '.', table) AS table,
-        formatReadableSize(sum(bytes)) AS size,
-        sum(rows) AS rows,
-        max(modification_time) AS latest_modification,
-        sum(bytes) AS bytes_size,
-        any(engine) AS engine,
-        formatReadableSize(sum(primary_key_bytes_in_memory)) AS primary_keys_size
-    FROM system.parts
-    WHERE active
-    GROUP BY database, table
-    ORDER BY bytes_size DESC
+```sql
+SELECT
+    concat(database, '.', table) AS table,
+    formatReadableSize(sum(bytes)) AS size,
+    sum(rows) AS rows,
+    max(modification_time) AS latest_modification,
+    sum(bytes) AS bytes_size,
+    any(engine) AS engine,
+    formatReadableSize(sum(primary_key_bytes_in_memory)) AS primary_keys_size
+FROM system.parts
+WHERE active
+GROUP BY database, table
+ORDER BY bytes_size DESC
+```
 
 > **important**
 > The system tables named `asynchronous_metric_log`, `query_log` and
@@ -4607,15 +4608,17 @@ stages.
 ### Database schema check
 To compare the database schemas across backend hosts you can use:
 
-    for hn in ams-pg-test backend-hel backend-fsn; do
-      hn=${hn}.ooni.org
-      echo $hn
-      > "schema_${hn}"
-      for tbl in $(ssh $hn 'clickhouse-client -q "SHOW TABLES FROM default"' | grep -v inner_id ); do
-        echo "  ${tbl}"
-        ssh $hn "clickhouse-client -q \"SHOW CREATE TABLE default.${tbl}\"" | sed 's/\\n/\n/g' >> "schema_${hn}"
-      done
-    done
+```bash
+for hn in ams-pg-test backend-hel backend-fsn; do
+  hn=${hn}.ooni.org
+  echo $hn
+  > "schema_${hn}"
+  for tbl in $(ssh $hn 'clickhouse-client -q "SHOW TABLES FROM default"' | grep -v inner_id ); do
+    echo "  ${tbl}"
+    ssh $hn "clickhouse-client -q \"SHOW CREATE TABLE default.${tbl}\"" | sed 's/\\n/\n/g' >> "schema_${hn}"
+  done
+done
+```
 
 The generated files can be compared more easily using `meld`.
 
@@ -4675,7 +4678,9 @@ A Python script that automates package builds and CI/CD workflows:
 
 It is used in the CI workflow as:
 
-    ./debops-ci --show-commands ci --bucket-name ooni-internal-deb
+```bash
+./debops-ci --show-commands ci --bucket-name ooni-internal-deb
+```
 
 #### debops-ci details
 The tool requires the following environment variables for automated ci
@@ -4906,13 +4911,14 @@ sequence:
 
 # Miscellaneous scripts running on FSN or ams-pg-test
 # Incident response
-## Preparation
+## On-call preparation
 Review [Alerting](#alerting)<sub><sup> </sup></sub>💡 and check [Grafana
 dashboards](#topic:dashboards)
 
 On Android devices the following apps can be used:
 
--   Slack app with audible notifications from the #ooni-bots channel
+-   [Slack](#slack)<sub><sup> </sup></sub>🔧 app with audible notifications from the
+    #ooni-bots channel
 
 -   [Grafana](#grafana)<sub><sup> </sup></sub>🔧 viewer
     <https://play.google.com/store/apps/details?id=it.ksol.grafanaview>
@@ -4953,7 +4959,9 @@ Steps:
 3.  A summary of the live and last rotated test helper can be obtained
     with:
 
-        SELECT rdn, dns_zone, name, region, draining_at FROM test_helper_instances ORDER BY name DESC LIMIT 8
+```sql
+SELECT rdn, dns_zone, name, region, draining_at FROM test_helper_instances ORDER BY name DESC LIMIT 8
+```
 
 4.  The rotation tool can be started manually. It will always pick the
     oldest host for rotation. ⚠️ Due to the propagation time of changes
@@ -4985,10 +4993,11 @@ For investigating glitches in the test [Test helper
 rotation](#comp:test_helper_rotation) see [Test helper rotation
 runbook](#run:test_helper_rotation).
 
-In this scenario either an alert has been sent to the #ooni-bots channel
-<https://app.slack.com/client/T37Q8EGUU/C38EJ0CET> by [Test helper
-failure rate notebook](#nb:test_helper_failure_rate) or something else
-caused the investigation. See [Alerting](#alerting)<sub><sup> </sup></sub>💡 for details.
+In this scenario either an alert has been sent to the
+[#ooni-bots](#topic:oonibots) [Slack](#slack)<sub><sup> </sup></sub>🔧 channel by [Test
+helper failure rate notebook](#nb:test_helper_failure_rate) or something
+else caused the investigation. See [Alerting](#alerting)<sub><sup> </sup></sub>💡 for
+details.
 
 Steps:
 
@@ -5048,6 +5057,68 @@ LIMIT 10
 ```
 
 See [Selecting test helper for rotation](#selecting-test-helper-for-rotation)<sub><sup> </sup></sub>🐞
+
+## Grafana backup runbook
+This runbook describes how to back up dashboards and alarms in Grafana.
+It does not include backing up datapoints stored in
+[Prometheus](#prometheus)<sub><sup> </sup></sub>🔧.
+
+The Grafana SQLite database can be dumped by running:
+
+```bash
+sqlite3 -line /var/lib/grafana/grafana.db '.dump' > grafana_dump.sql
+```
+
+Future implementation is tracked in: [Implement Grafana dashboard and
+alarms backup](https://github.com/ooni/backend/issues/770)
+
+
+## Grafana editing
+This runbook describes adding new dashboards, panels and alerts in
+[Grafana](#grafana)<sub><sup> </sup></sub>🔧
+
+To add a new dashboard use this
+<https://grafana.ooni.org/dashboard/new?orgId=1>
+
+To add a new panel to an existing dashboard load the dashboard and then
+click the \"Add\" button on the top.
+
+Many dashboards use variables. For example, on
+<https://grafana.ooni.org/d/l-MQSGonk/api-and-fastpath-multihost?orgId=1>
+the variables `$host` and `$avgspan` are set on the top left and used in
+metrics like:
+
+    avg_over_time(netdata_disk_backlog_milliseconds_average{instance="$host:19999"}[$avgspan])
+
+### Managing Grafana alert rules
+Alert rules can be listed at <https://grafana.ooni.org/alerting/list>
+
+> **note**
+> The list also shows which alerts are currently alarming, if any.
+
+Click the arrow on the left to expand each alerting rule.
+
+The list shows:
+
+![editing_alerts](../../../assets/images-backend/grafana_alerts_editing.png)
+
+> **note**
+> When creating alerts it can be useful to add full URLs linking to
+> dashboards, runbooks etc.
+
+To stop notifications create a \"silence\" either:
+
+1.  by further expanding an alert rule (see below) and clicking the
+    \"Silence\" button
+
+2.  by inputting it in inhttps://grafana.ooni.org/alerting/silences
+
+Screenshot:
+
+![adding_silence](../../../assets/images-backend/grafana_alerts_silence.png)
+
+Additionally, the \"Show state history\" button is useful especially
+with flapping alerts.
 
 ## Geolocation script
 The following script can be used to compare the geolocation reported by
