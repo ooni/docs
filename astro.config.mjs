@@ -22,6 +22,7 @@ export default defineConfig({
 					autogenerate: { directory: 'reference' },
 				},
 			],
+      expressiveCode: false
 		}),
 	],
 });
