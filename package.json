@@ -6,6 +6,7 @@
     "dev": "astro dev",
     "start": "node run.mjs",
     "build": "astro check && astro build",
+    "build-vercel": "astro check && astro build --config astro.config.vercel.mjs",
     "preview": "astro preview",
     "astro": "astro",
     "sync-docs": "node src/scripts/sync.js"
@@ -15,6 +16,7 @@
     "@astrojs/node": "^7.0.0",
     "@astrojs/starlight": "^0.15.0",
     "@astrojs/ts-plugin": "^1.3.1",
+    "@astrojs/vercel": "^6.0.1",
     "@fastify/middie": "^8.3.0",
     "@fastify/static": "^6.12.0",
     "astro": "^4.0.3",
