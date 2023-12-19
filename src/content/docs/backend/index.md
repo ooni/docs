@@ -16,112 +16,112 @@ following button on the top-right menu provides a table of content:
 
 ![toc_button](../../../assets/images-backend/gh_button.png)
 
+
 # Conventions
-A few shorthands used in the document:
+  A few shorthands used in the document:
 
--   Backend: the whole software stack including the Fastpath, API, tools
-    that transfer data around
+  * Backend: the whole software stack including the Fastpath, API, tools
+  that transfer data around
 
--   FSN: The backend-fsn.ooni.org host, running most of the
-    **production** backend infrastructure.
+  * FSN: The backend-fsn.ooni.org host, running most of the
+  **production** backend infrastructure.
 
--   ams-pg-test: The ams-pg-test.ooni.org host, running a **test**
-    backend infrastructure.
+  * ams-pg-test: The ams-pg-test.ooni.org host, running a **test**
+  backend infrastructure.
 
-Usually backend components have names that are kept consistent across:
+  Usually backend components have names that are kept consistent across:
 
--   Journald unit name
+  * Journald unit name
 
--   Systemd service name
+  * Systemd service name
 
--   Systemd timer name
+  * Systemd timer name
 
--   StatsD metrics prefix
+  * StatsD metrics prefix
 
-When linking to the backend codebase a specific commit is used in order
-to avoid breaking links when the codebase changes:
-<https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/>
+  When linking to the backend codebase a specific commit is used in order
+  to avoid breaking links when the codebase changes:
+  <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/>
 
-Internal links across the document are indicated with small icons to
-illustrate the type of element they are linking to, as done in technical
-wikis.
+  Internal links across the document are indicated with small icons to
+  illustrate the type of element they are linking to, as done in technical
+  wikis.
 
-The icons in use are listed below:
+  The icons in use are listed below:
 
--   API: 🐝
+  * API: 🐝
 
--   Bug: 🐞
+  * Bug: 🐞
 
--   Backend component: ⚙
+  * Backend component: ⚙
 
--   Grafana dashboard: 📊
+  * Grafana dashboard: 📊
 
--   Backend host: 🖥
+  * Backend host: 🖥
 
--   Jupyter notebook: 📔
+  * Jupyter notebook: 📔
 
--   Debian package: 📦
+  * Debian package: 📦
 
--   Runbook: 📒
+  * Runbook: 📒
 
--   Database table: ⛁
+  * Database table: ⛁
 
--   Network test: Ⓣ
+  * Network test: Ⓣ
 
--   Systemd timer: ⏲
+  * Systemd timer: ⏲
 
--   Python script: 🐍
+  * Python script: 🐍
 
--   Tool: 🔧
+  * Tool: 🔧
 
--   Web UI: 🖱
+  * Web UI: 🖱
 
--   General topic: 💡
+  * General topic: 💡
+
 
 # Architecture
-The backend infrastructure provides multiple functions:
+  The backend infrastructure performs multiple functions:
 
--   Provide APIs for data consumers
+  * Provide APIs for data consumers
 
--   Instruct probes on what measurements to perform
+  * Instruct probes on what measurements to perform
 
--   Receive measurements from probes, process them and store them in the
-    database
+  * Receive measurements from probes, process them and store them in the database
 
--   Upload new measurements to a bucket on [S3 data
-    bucket](#topic:s3data)
+* Upload new measurements to a bucket on [S3 data bucket](#s3-data-bucket)&thinsp;💡
 
--   Fetch data from external sources e.g. fingerprints from a GitHub
-    repository
+  * Fetch data from external sources e.g. fingerprints from a GitHub repository
+
 
 ## Main data flows
-This diagram represent the main flow of measurement data.
+  This diagram represent the main flow of measurement data.
 
-The rectangles represent processes. The ellipses represent data at rest:
-as files on disk, files on S3 or records in database tables.
+  The rectangles represent processes. The ellipses represent data at rest:
+  as files on disk, files on S3 or records in database tables.
 
-![Diagram](https://kroki.io/blockdiag/svg/eNrFlD1PwzAQhvf-CstdSTOwFYEEKkgMSJUQU4Uqf5wbU8c2_kCVEP-d2E3SlrZjQzbfG_t9fL47qgxbc0lW6HuEOAgSVVj6ilhAt8iZqDlwajY3IzR3hoJHC2aUcY2Ix0JA8-ErVDkQKVKFYP20LFcyVJFOmKlLY7QsKWFr0LzghsUadCBBGl1SZWhZE6k7fXmgT2o-ttkTvzf2jxvb-ILbB0j2QmQZv16jD2-0wmjR4YNS0nq4IF92LIRULWSisMYHRvSgHK1nCzF72KYCBfof6QiEKuhJBPHBklANDtMZ7_Nw6dfoM0KEQVGSbbG1zRhvTSkTDg6fKOYLYtRAfHSQYkXsEDLQU5urgYG6J0oQ_YAp7hC-nz9Pt2vkwX1J1vRXFnagaXVUXv3el91V253d_MDpvmfP3y-Q_rA-Vzm0GzSn3Q4fuN3RDYVj8aBZj7v3vMdJ1D9__fwCHdgDSg==)
+  ![Diagram](https://kroki.io/blockdiag/svg/eNrFlD1PwzAQhvf-CstdSTOwFYEEKkgMSJUQU4Uqf5wbU8c2_kCVEP-d2E3SlrZjQzbfG_t9fL47qgxbc0lW6HuEOAgSVVj6ilhAt8iZqDlwajY3IzR3hoJHC2aUcY2Ix0JA8-ErVDkQKVKFYP20LFcyVJFOmKlLY7QsKWFr0LzghsUadCBBGl1SZWhZE6k7fXmgT2o-ttkTvzf2jxvb-ILbB0j2QmQZv16jD2-0wmjR4YNS0nq4IF92LIRULWSisMYHRvSgHK1nCzF72KYCBfof6QiEKuhJBPHBklANDtMZ7_Nw6dfoM0KEQVGSbbG1zRhvTSkTDg6fKOYLYtRAfHSQYkXsEDLQU5urgYG6J0oQ_YAp7hC-nz9Pt2vkwX1J1vRXFnagaXVUXv3el91V253d_MDpvmfP3y-Q_rA-Vzm0GzSn3Q4fuN3RDYVj8aBZj7v3vMdJ1D9__fwCHdgDSg==)
 
-```blockdiag
-blockdiag {
- default_shape = roundedbox;
- Probes [color = "#ffeeee", href = "@@probes"];
- Explorer [color = "#eeeeff"];
- "S3 jsonl" [shape = ellipse, href = "@@jsonl-files"];
- "S3 postcan" [shape = ellipse, href = "@@postcans"];
- "DB jsonl tbl" [shape = ellipse, href = "@@jsonl-table"];
- "DB fastpath tbl" [shape = ellipse, href = "@@fastpath-table"];
- "disk queue" [shape = ellipse, href = "@@disk-queue"];
- "Uploader" [color = "#eeeeff", href = "@@measurement-uploader"];
- "Fastpath" [color = "#eeeeff", href = "@@fastpath"];
+  ```blockdiag
+  blockdiag {
+    default_shape = roundedbox;
+    Probes [color = "#ffeeee", href = "@@probes"];
+    Explorer [color = "#eeeeff"];
+    "S3 jsonl" [shape = ellipse, href = "@@jsonl-files"];
+    "S3 postcan" [shape = ellipse, href = "@@postcans"];
+    "DB jsonl tbl" [shape = ellipse, href = "@@jsonl-table"];
+    "DB fastpath tbl" [shape = ellipse, href = "@@fastpath-table"];
+    "disk queue" [shape = ellipse, href = "@@disk-queue"];
+    "Uploader" [color = "#eeeeff", href = "@@measurement-uploader"];
+    "Fastpath" [color = "#eeeeff", href = "@@fastpath"];
 
- Probes -> "API: Probe services" -> "Fastpath" -> "DB fastpath tbl" -> "API: Measurements" -> "Explorer";
- "API: Probe services" -> "disk queue" -> "API: uploader" -> "S3 jsonl" -> "API: Measurements";
- "Uploader" -> "S3 postcan";
- "Uploader" -> "DB jsonl tbl";
- "DB jsonl tbl" -> "API: Measurements";
- "disk queue" -> "API: Measurements";
-}
+    Probes -> "API: Probe services" -> "Fastpath" -> "DB fastpath tbl" -> "API: Measurements" -> "Explorer";
+    "API: Probe services" -> "disk queue" -> "API: uploader" -> "S3 jsonl" -> "API: Measurements";
+    "Uploader" -> "S3 postcan";
+    "Uploader" -> "DB jsonl tbl";
+    "DB jsonl tbl" -> "API: Measurements";
+    "disk queue" -> "API: Measurements";
+  }
 ```
 
 Ellipses represent data; rectangles represent processes. Click on the
@@ -136,19 +136,20 @@ incoming measurements are accepted.
 
 Measurements are enqueued on disk using one file per measurement. On
 hourly intervals they are batched together, compressed and uploaded to
-S3 by the [Measurement uploader](#measurement-uploader)<sub><sup> </sup></sub>⚙. The batching is
-performed to allow efficient compression. See the [dedicated
-subchapter](#comp:uploader) for details.
+S3 by the [Measurement uploader](#measurement-uploader)&thinsp;⚙. The batching is
+performed to allow efficient compression. See the
+[dedicated subchapter](#measurement-uploader)&thinsp;⚙ for details.
 
-The measurement is also sent to the [Fastpath](#fastpath)<sub><sup> </sup></sub>⚙. The
+The measurement is also sent to the [Fastpath](#fastpath)&thinsp;⚙. The
 Fastpath runs as a dedicated daemon with a pool of workers. It
 calculates scoring for the measurement and writes a record in the
 fastpath table. Each measurement is processed individually in real time.
-See the [dedicated subchapter](#fastpath)<sub><sup> </sup></sub>⚙ below.
+See the [dedicated subchapter](#fastpath)&thinsp;⚙ below.
 
 The disk queue is also used by the API to access recent measurements
-that have not been uploaded to S3 yet. See the [measurement
-API](#get_measurement) for details.
+that have not been uploaded to S3 yet. See the
+[measurement API](#getting-measurement-bodies)&thinsp;🐝 for details.
+
 
 ## Reproducibility
 The measurement processing pipeline is meant to generate outputs that
@@ -160,60 +161,280 @@ arbitrarily delete or alter measurements and that we score them as
 accessible/anomaly/confirmed/failure in a predictable and transparent
 way.
 
-> **important**
-> The only exceptions were due to privacy breaches that required removal
-> of the affected measurements from the [S3 data bucket](#s3-data-bucket)<sub><sup> </sup></sub>💡
-> bucket.
+::: note
+  The only exceptions were due to privacy breaches that required removal
+of the affected measurements from the [S3 data bucket](#s3-data-bucket)&thinsp;💡
+  bucket.
+  :::
 
-As such, the backend infrastructure is
-[FOSS](https://en.wikipedia.org/wiki/Free_and_open-source_software) and
-can be deployed by 3rd parties. We encourage researchers to replicate
-our findings.
+  As such, the backend infrastructure is
+  [FOSS](https://en.wikipedia.org/wiki/Free_and_open-source_software) and
+  can be deployed by 3rd parties. We encourage researchers to replicate
+  our findings.
 
-Incoming measurements are minimally altered by the [Measurement
-uploader](#comp:uploader) and uploaded to S3.
+  Incoming measurements are minimally altered by the
+  [Measurement uploader](#measurement-uploader)&thinsp;⚙ and uploaded to S3.
+
 
 # Application metrics
-All components of the backend are designed to output application
-metrics.
+  All components of the backend are designed to output application
+  metrics.
 
-Metrics are prefixed with the name of each application. The metrics are
-used in [Grafana](#grafana)<sub><sup> </sup></sub>🔧 for charts, monitoring and alarming.
+  Metrics are prefixed with the name of each application. The metrics are
+  used in [Grafana](#grafana)&thinsp;🔧 for charts, monitoring and alarming.
 
-They use the StatsD protocol over UDP using localhost as destination.
-This guarantees that applications never block on metric generation in
-case the receiver slows down. The StatsD messages are received by
-[Netdata](#netdata)<sub><sup> </sup></sub>🔧. It automatically tracks any new metric,
-generates averages and summaries as needed and exposes it to
-[Prometheus](#prometheus)<sub><sup> </sup></sub>🔧 for scraping.
+  They use the [StatsD](#statsd)&thinsp;💡 protocol.
 
-Application metrics data flow:
+  Application metrics data flow:
 
-![Diagram](https://kroki.io/blockdiag/svg/eNq9kc1qAyEUhffzFDLZNnGf0EBX7SoEkl0p4arXUaJe8QcKpe9eZ9Imkz5AXHo-OcdzhCN5VhYG9tUxhRqqK6dsICJ7ZolqUKgEfW469hKjsxKKpcDeJTlKjegXWmM7_UcjdlgUFJiro6Z1_8RMQj3emFJiXnM-2GKqWEnynChYLkCeMailIlk9hjL5cOFIcA82_OmnO33l1SJcTKcA-0Qei8GaH5shXn2nGK8JNIQH9zBcTKcA86mW29suDgS60T23d1ndjda4eX1X9O143B_-t9vg309uuu8fUvvJ0Q==)
+  ![Diagram](https://kroki.io/blockdiag/svg/eNq9kc1qAyEUhffzFDLZNnGf0EBX7SoEkl0p4arXUaJe8QcKpe9eZ9Imkz5AXHo-OcdzhCN5VhYG9tUxhRqqK6dsICJ7ZolqUKgEfW469hKjsxKKpcDeJTlKjegXWmM7_UcjdlgUFJiro6Z1_8RMQj3emFJiXnM-2GKqWEnynChYLkCeMailIlk9hjL5cOFIcA82_OmnO33l1SJcTKcA-0Qei8GaH5shXn2nGK8JNIQH9zBcTKcA86mW29suDgS60T23d1ndjda4eX1X9O143B_-t9vg309uuu8fUvvJ0Q==)
 
-Ellipses represent data; rectangles represent processes. Purple
-components belong to the backend. Click on the image and then click on
-each shape to see related documentation.
+  Ellipses represent data; rectangles represent processes. Purple
+  components belong to the backend. Click on the image and then click on
+  each shape to see related documentation.
 
-In Python the statsd library is used e.g.:
+  [Prometheus](#tool:prometheus) and [Grafana](#grafana)&thinsp;🔧 provide
+  historical charts for more than 90 days and are useful to investigate
+  long-term trends.
 
-```python
-metrics = statsd.StatsClient("localhost", 8125, prefix="ooni-api")
+  [Netdata](#netdata)&thinsp;🔧 provides a web UI with real-time metrics. See
+  the dedicated subchapter for details.
+
+
+## StatsD
+  All backend components send StatsD metrics over UDP using localhost as destination.
+
+  This guarantees that applications never block on metric generation in
+  case the receiver slows down. The StatsD messages are received by
+  [Netdata](#netdata)&thinsp;🔧. It automatically tracks any new metric,
+  generates averages and summaries as needed and exposes it to
+  [Prometheus](#prometheus)&thinsp;🔧 for scraping.
+  In the codebase the statsd library is often used as:
+
+  ```python
+  from <package_name>.metrics import setup_metrics
+  setup_metrics(name="<component_name>")
+  metrics.gauge("<metric_name>", <value>)
+  ```
+
+  Because of this, a quick way to identify where metrics are being generated
+  in the backend codebase is to search e.g.:
+
+  * <https://github.com/search?q=repo%3Aooni%2Fbackend+metrics.gauge&type=code>
+  * <https://github.com/search?q=repo%3Aooni%2Fbackend+metrics.timer&type=code>
+
+  Where possible, timers have the same name as the function being timed e.g.
+  <https://github.com/search?q=repo%3Aooni%2Fbackend+clickhouse_upsert_summary&type=code>
+
+  See [Conventions](#conventions)&thinsp;💡 for patterns around component naming.
+
+
+### Metrics list
+  This subsection provides a list of the most important application metrics as they
+  are shown in Grafana. The names are autogenerated by Netdata based on the
+  metric name used in StatsD.
+
+  For example a `@metrics.timer("generate_test_list")` Python decorator is used at:
+  <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/prio.py#L162>.
+  Such timer will be processed by Netdata and appear in Grafana as:
+  ```
+  netdata_statsd_timer_ooni_api_generate_test_list_milliseconds_average
+  ```
+
+  The metrics always start with `netdata_statsd` and end with:
+
+  * `_milliseconds_average`
+  * `_events_persec_average`
+  * `_value_average`
+
+  Also see <https://blog.netdata.cloud/introduction-to-statsd/>
+
+  TIP: StatsD collectors (like Netdata or others) preprocess datapoints by calculating average/min/max values etc.
+
+  Run this to locate where in the backend codbase application metrics
+  are being generated:
+
+  ```bash
+  find ~ -name '*.py' -exec grep 'metrics\.' -H "{}" \;
+  ```
+
+  Metrics for [ASN metadata updater](#asn-metadata-updater)&thinsp;⚙.
+  See the [ASN metadata updater dashboard](#asn-metadata-updater-dashboard)&thinsp;📊:
+
+```
+netdata_statsd_asnmeta_updater_asnmeta_tmp_len_gauge_value_average
+netdata_statsd_asnmeta_updater_asnmeta_update_progress_gauge_value_average
+netdata_statsd_asnmeta_updater_fetch_data_timer_milliseconds_average
+netdata_statsd_gauge_asnmeta_updater_asnmeta_tmp_len_value_average
+netdata_statsd_gauge_asnmeta_updater_asnmeta_update_progress_value_average
+netdata_statsd_timer_asnmeta_updater_fetch_data_milliseconds_average
 ```
 
-[Prometheus](#tool:prometheus) and [Grafana](#grafana)<sub><sup> </sup></sub>🔧 provide
-historical charts for more than 90 days and are useful to investigate
-long-term trends.
 
-[Netdata](#netdata)<sub><sup> </sup></sub>🔧 provides a web UI with real-time metrics. See
-the dedicated subchapter for details.
+Metrics for [CitizenLab test list updater](#citizenlab-test-list-updater)&thinsp;⚙
+
+```
+netdata_statsd_citizenlab_test_lists_updater_citizenlab_test_list_len_gauge_value_average
+netdata_statsd_citizenlab_test_lists_updater_fetch_citizen_lab_lists_timer_milliseconds_average
+netdata_statsd_citizenlab_test_lists_updater_update_citizenlab_table_timer_milliseconds_average
+netdata_statsd_gauge_citizenlab_test_lists_updater_citizenlab_test_list_len_value_average
+netdata_statsd_gauge_citizenlab_test_lists_updater_rowcount_value_average
+netdata_statsd_timer_citizenlab_test_lists_updater_fetch_citizen_lab_lists_milliseconds_average
+netdata_statsd_timer_citizenlab_test_lists_updater_rebuild_citizenlab_table_from_citizen_lab_lists_milliseconds_average
+netdata_statsd_timer_citizenlab_test_lists_updater_update_citizenlab_table_milliseconds_average
+```
+
+Metrics for the [Database backup tool](#database-backup-tool)&thinsp;⚙.
+See the [Database backup dashboard](#database-backup-dashboard)&thinsp;📊 on Grafana:
+
+netdata_statsd_db_backup_run_export_timer_milliseconds_average
+netdata_statsd_db_backup_status_gauge_value_average
+netdata_statsd_db_backup_table_fastpath_backup_time_ms_gauge_value_average
+netdata_statsd_db_backup_table_jsonl_backup_time_ms_gauge_value_average
+netdata_statsd_db_backup_uploaded_bytes_tot_gauge_value_average
+netdata_statsd_db_backup_upload_to_s3_timer_milliseconds_average
+netdata_statsd_gauge_db_backup_status_value_average
+netdata_statsd_gauge_db_backup_table_fastpath_backup_time_ms_value_average
+netdata_statsd_gauge_db_backup_table_jsonl_backup_time_ms_value_average
+netdata_statsd_gauge_db_backup_uploaded_bytes_tot_value_average
+netdata_statsd_timer_db_backup_run_backup_milliseconds_average
+netdata_statsd_timer_db_backup_run_export_milliseconds_average
+netdata_statsd_timer_db_backup_upload_to_s3_milliseconds_average
+
+
+```
+netdata_statsd_gauge_db_backup_status_value_average
+netdata_statsd_gauge_db_backup_table_citizenlab_byte_count_value_average
+netdata_statsd_gauge_db_backup_table_fastpath_backup_time_ms_value_average
+netdata_statsd_gauge_db_backup_table_fastpath_byte_count_value_average
+netdata_statsd_gauge_db_backup_table_jsonl_backup_time_ms_value_average
+netdata_statsd_gauge_db_backup_table_jsonl_byte_count_value_average
+netdata_statsd_gauge_db_backup_uploaded_bytes_tot_value_average
+netdata_statsd_timer_db_backup_backup_table_citizenlab_milliseconds_average
+netdata_statsd_timer_db_backup_backup_table_fastpath_milliseconds_average
+netdata_statsd_timer_db_backup_backup_table_jsonl_milliseconds_average
+```
+
+
+Metrics for the [social media blocking event detector](#social-media-blocking-event-detector)&thinsp;⚙:
+
+```
+netdata_statsd_gauge_detector_blocking_events_tblsize_value_average
+netdata_statsd_gauge_detector_blocking_status_tblsize_value_average
+netdata_statsd_timer_detector_run_detection_milliseconds_average
+```
+
+
+Metrics for the [Fastpath](#fastpath)&thinsp;⚙. Used in various dashboards,
+primarily [API and fastpath](#api-and-fastpath)&thinsp;📊 dashboard.
+
+```
+netdata_statsd_timer_fastpath_db_clickhouse_upsert_summary_milliseconds_average
+netdata_statsd_timer_fastpath_db_fetch_fingerprints_milliseconds_average
+netdata_statsd_timer_fastpath_full_run_milliseconds_average
+netdata_statsd_gauge_fastpath_recent_measurement_count_value_average
+```
+
+
+Metrics [Fingerprint updater](#fingerprint-updater)&thinsp;⚙
+See the [Fingerprint updater dashboard](#fingerprint-updater-dashboard)&thinsp;📊 on Grafana.
+
+```
+netdata_statsd_timer_fingerprints_updater_fetch_csv_milliseconds_average
+netdata_statsd_gauge_fingerprints_updater_fingerprints_dns_tmp_len_value_average
+netdata_statsd_gauge_fingerprints_updater_fingerprints_http_tmp_len_value_average
+netdata_statsd_gauge_fingerprints_updater_fingerprints_update_progress_value_average
+```
+
+Metrics from Nginx caching of the aggregation API.
+See [Aggregation cache monitoring](#aggregation-cache-monitoring)&thinsp;🐍
+
+```
+netdata_statsd_gauge_nginx_aggregation_cache_EXPIRED_value_average
+netdata_statsd_gauge_nginx_aggregation_cache_HIT_value_average
+netdata_statsd_gauge_nginx_aggregation_cache_MISS_value_average
+netdata_statsd_gauge_nginx_aggregation_cache_UPDATING_value_average
+```
+
+Metrics for the [API](#api)&thinsp;⚙.
+
+```
+netdata_statsd_counter_ooni_api_geoip_asn_differs_events_persec_average
+netdata_statsd_counter_ooni_api_geoip_cc_differs_events_persec_average
+netdata_statsd_counter_ooni_api_geoip_ipaddr_found_events_persec_average
+netdata_statsd_counter_ooni_api_geoip_ipaddr_not_found_events_persec_average
+netdata_statsd_counter_ooni_api_gunicorn_request_status_
+netdata_statsd_counter_ooni_api_probe_cc_asn_match_events_persec_average
+netdata_statsd_counter_ooni_api_probe_cc_asn_nomatch_events_persec_average
+netdata_statsd_counter_ooni_api_probe_legacy_login_successful_events_persec_average
+netdata_statsd_counter_ooni_api_probe_login_successful_events_persec_average
+netdata_statsd_counter_ooni_api_receive_measurement_count_events_persec_average
+netdata_statsd_counter_ooni_api_receive_measurement_discard_asn_
+netdata_statsd_counter_ooni_api_receive_measurement_discard_cc_zz_events_persec_average
+netdata_statsd_counter_ooni_api_uploader_msmt_count_events_persec_average
+netdata_statsd_counter_ooni_api_uploader_postcan_count_events_persec_average
+netdata_statsd_gauge_ooni_api_check_in_test_list_count_value_average
+netdata_statsd_gauge_ooni_api_spool_post_count_value_average
+netdata_statsd_gauge_ooni_api_test_list_urls_count_value_average
+netdata_statsd_timer_ooni_api_apicall___api__v
+netdata_statsd_timer_ooni_api_citizenlab_lock_time_milliseconds_average
+netdata_statsd_timer_ooni_api_citizenlab_repo_init_milliseconds_average
+netdata_statsd_timer_ooni_api_citizenlab_repo_pull_milliseconds_average
+netdata_statsd_timer_ooni_api_fetch_citizenlab_data_milliseconds_average
+netdata_statsd_timer_ooni_api_fetch_reactive_url_list_milliseconds_average
+netdata_statsd_timer_ooni_api_generate_test_list_milliseconds_average
+netdata_statsd_timer_ooni_api_get_aggregated_milliseconds_average
+netdata_statsd_timer_ooni_api_get_measurement_meta_clickhouse_milliseconds_average
+netdata_statsd_timer_ooni_api_get_measurement_meta_milliseconds_average
+netdata_statsd_timer_ooni_api_get_raw_measurement_milliseconds_average
+netdata_statsd_timer_ooni_api_get_torsf_stats_milliseconds_average
+netdata_statsd_timer_ooni_api_gunicorn_request_duration_milliseconds_average
+netdata_statsd_timer_ooni_api_open_report_milliseconds_average
+netdata_statsd_timer_ooni_api_open_report_milliseconds_averageopen_report
+netdata_statsd_timer_ooni_api_receive_measurement_milliseconds_average
+netdata_statsd_timer_ooni_api_uploader_fill_jsonl_milliseconds_average
+netdata_statsd_timer_ooni_api_uploader_fill_postcan_milliseconds_average
+netdata_statsd_timer_ooni_api_uploader_total_run_time_milliseconds_average
+netdata_statsd_timer_ooni_api_uploader_update_db_table_milliseconds_average
+netdata_statsd_timer_ooni_api_uploader_upload_measurement_milliseconds_average
+```
+
+Metrics for the [GeoIP downloader](#geoip-downloader)&thinsp;⚙.
+
+```
+netdata_statsd_gauge_ooni_download_geoip_geoip_asn_epoch_value_average
+netdata_statsd_gauge_ooni_download_geoip_geoip_asn_node_cnt_value_average
+netdata_statsd_gauge_ooni_download_geoip_geoip_cc_epoch_value_average
+netdata_statsd_gauge_ooni_download_geoip_geoip_cc_node_cnt_value_average
+netdata_statsd_timer_ooni_download_geoip_download_geoip_milliseconds_average
+```
+
+Metrics for the [test helper rotation](#test-helper-rotation)&thinsp;⚙.
+
+```
+netdata_statsd_timer_rotation_create_le_do_ssl_cert_milliseconds_average
+netdata_statsd_timer_rotation_deploy_ssl_cert_milliseconds_average
+netdata_statsd_timer_rotation_destroy_drained_droplets_milliseconds_average
+netdata_statsd_timer_rotation_end_to_end_test_milliseconds_average
+netdata_statsd_timer_rotation_run_time_milliseconds_average
+netdata_statsd_timer_rotation_scp_file_milliseconds_average
+netdata_statsd_timer_rotation_setup_nginx_milliseconds_average
+netdata_statsd_timer_rotation_setup_vector_milliseconds_average
+netdata_statsd_timer_rotation_spawn_new_droplet_milliseconds_average
+netdata_statsd_timer_rotation_ssh_reload_nginx_milliseconds_average
+netdata_statsd_timer_rotation_ssh_restart_netdata_milliseconds_average
+netdata_statsd_timer_rotation_ssh_restart_nginx_milliseconds_average
+netdata_statsd_timer_rotation_ssh_restart_vector_milliseconds_average
+netdata_statsd_timer_rotation_ssh_wait_droplet_warmup_milliseconds_average
+netdata_statsd_timer_rotation_update_dns_records_milliseconds_average
+```
 
 
 ## Prometheus
 Prometheus <https://prometheus.io/> is a popular monitoring system and
-runs on [monitoring.ooni.org](#monitoring.ooni.org)<sub><sup> </sup></sub>🖥
+runs on [monitoring.ooni.org](#monitoring.ooni.org)&thinsp;🖥
 
-It is deployed and configured by [Ansible](#ansible)<sub><sup> </sup></sub>🔧 using the
+It is deployed and configured by [Ansible](#ansible)&thinsp;🔧 using the
 following playbook:
 <https://github.com/ooni/sysadmin/blob/master/ansible/deploy-monitoring.yml>
 
@@ -223,53 +444,60 @@ Netdata, and using node exporter. The web UI is accessible at
 
 
 ## Grafana dashboards
-There is a number of dashboards on [Grafana](#grafana)<sub><sup> </sup></sub>🔧 at
+There is a number of dashboards on [Grafana](#grafana)&thinsp;🔧 at
 <https://grafana.ooni.org/>
 
-[Grafana](#grafana)<sub><sup> </sup></sub>🔧 is deployed on the
-[monitoring.ooni.org](#monitoring.ooni.org)<sub><sup> </sup></sub>🖥 host. See [Monitoring deployment
-runbook](#run:deploy_monitoring) for deployment.
+[Grafana](#grafana)&thinsp;🔧 is deployed on the
+[monitoring.ooni.org](#monitoring.ooni.org)&thinsp;🖥 host. See
+[Monitoring deployment runbook](#monitoring-deployment-runbook)&thinsp;📒 for deployment.
 
 The dashboards are used for:
 
--   Routinely reviewing the general health of the backend infrastructure
+ * Routinely reviewing the general health of the backend infrastructure
 
--   Predicting long-term scaling requirements, i.e.
+ * Predicting long-term scaling requirements, i.e.
 
--   increasing disk space for the database
+ * increasing disk space for the database
 
--   increasing CPU and memory requirements
+ * increasing CPU and memory requirements
 
--   Investigating alerts and troubleshooting incidents
+ * Investigating alerts and troubleshooting incidents
 
 
 ### Alerting
-Alerts from [Grafana](#tool:grafana) and [Prometheus](#prometheus)<sub><sup> </sup></sub>🔧
-are sent to the [#ooni-bots](#topic:oonibots) [Slack](#slack)<sub><sup> </sup></sub>🔧
+Alerts from [Grafana](#tool:grafana) and [Prometheus](#prometheus)&thinsp;🔧
+are sent to the [#ooni-bots](#topic:oonibots) [Slack](#slack)&thinsp;🔧
 channel by a bot.
 
-[Slack](#slack)<sub><sup> </sup></sub>🔧 can be configured to provide desktop notification
+[Slack](#slack)&thinsp;🔧 can be configured to provide desktop notification
 from browsers and audible notifications on smartphones.
 
 Alert flow:
 
 ![Diagram](https://kroki.io/blockdiag/svg/eNp1jUEKwjAQRfc9xTBd9wSioBtxV3ApIpNmYktjJiQpCuLdTbvQIDirP7zH_8pKN-qBrvCsQLOhyaZL7MkzrCHI5DRrJY9VBW2QG6eepwinTqyELGDN-YzBcxb2gQw5-kOxFnFDoyRFLBVjZmlRioVm86nLEY-WuhG27QGXt6z6YvIef4dmugtyjxwye70BaPFK1w==)
 
+The diagram does not explicitly include alertmanager. It is part of Prometheus and receives alerts and routes them to Slack.
+
+In the diagram Prometheus receives, stores and serves datapoints and has some alert rules to trigger alerts.
+Grafana acts as a UI for Prometheus and also triggers alerts based on alert rules configured in Grafana itself.
+
+Alertmanager is pretty simple - receives alerts and sends notification to Slack.
+
 The alert rules are listed at <https://grafana.ooni.org/alerting/list>
 The list also shows which alerts are firing at the moment, if any. There
-is also a handful of alerts configured in [Prometheus](#prometheus)<sub><sup> </sup></sub>🔧
-using [Ansible](#ansible)<sub><sup> </sup></sub>🔧.
+is also a handful of alerts configured in [Prometheus](#prometheus)&thinsp;🔧
+using [Ansible](#ansible)&thinsp;🔧.
 
 The silences list shows if any alert has been temporarily silenced:
 <https://grafana.ooni.org/alerting/silences>
 
-See [Grafana editing](#grafana-editing)<sub><sup> </sup></sub>📒 and [Managing Grafana alert
-rules](#run:grafana_alerts) for details.
+See [Grafana editing](#grafana-editing)&thinsp;📒 and
+[Managing Grafana alert rules](#managing-grafana-alert-rules)&thinsp;📒 for details.
 
-There are also many dashboards and alerts configured in [Jupyter
-Notebook](#tool:jupyter). These are meant for metrics that require more
+There are also many dashboards and alerts configured in
+[Jupyter Notebook](#jupyter-notebook)&thinsp;🔧. These are meant for metrics that require more
 complex algorithms, predictions and SQL queries that cannot be
-implemented using [Grafana](#grafana)<sub><sup> </sup></sub>🔧.
+implemented using [Grafana](#grafana)&thinsp;🔧.
 
 On many dashboards you can set the averaging timespan and the target
 hostname using fields on the top left.
@@ -280,70 +508,82 @@ Here is an overview of the most useful dashboards:
 ### API and fastpath
 <https://grafana.ooni.org/d/l-MQSGonk/api-and-fastpath-multihost?orgId=1&var-avgspan=1h&var-host=backend-fsn.ooni.org>
 
-This is the most important dashboard showing the metrics of the
-[API](#comp:api) and the [Fastpath](#fastpath)<sub><sup> </sup></sub>⚙.
+This is the most important dashboard showing metrics of the
+[API](#comp:api) and the [Fastpath](#fastpath)&thinsp;⚙.
 
 
 ### Test-list repository in the API
 <https://grafana.ooni.org/d/siWZslSVk/api-test-list-repo?orgId=1>
 
-Shows timings around the git repository checked out by the
-[API](#api)<sub><sup> </sup></sub>⚙ that contains the test lists.
+This dashboard shows timings around the git repository checked out by the
+[API](#api)&thinsp;⚙ that contains the test lists.
 
 
 ### Measurement uploader dashboard
 <https://grafana.ooni.org/d/ma3Q6GzVz/api-uploader?orgId=1>
 
-Metrics, timing and data transferred by the [Measurement
-uploader](#comp:uploader)
+This dashboard shows metrics, timing and amounts of data transferred by the
+[Measurement uploader](#measurement-uploader)&thinsp;⚙
 
 
 ### Fingerprint updater dashboard
 <https://grafana.ooni.org/d/JNlK8ox4z/fingerprints>
 
-Metrics and timing from the [Fingerprint
-updater](#comp:fingerprints_updater)
+This dashboard shows metrics and timing from the
+[Fingerprint updater](#fingerprint-updater)&thinsp;⚙
 
 
 ### ClickHouse dashboard
 <https://grafana.ooni.org/d/thEkJB_Mz/clickhouse?orgId=1>
 
-ClickHouse-specific performance metrics
+This dashboards show ClickHouse-specific performance metrics.
+It can be used for optimizations.
+
+For investigating slow queries also see the [ClickHouse queries notebook](#clickhouse-queries-notebook)&thinsp;📔.
 
 
 ### HaProxy dashboard
 <https://grafana.ooni.org/d/ba33e4df-d686-4459-b37d-3966af14ad00/haproxy>
 
-Basic metrics from [HaProxy](#haproxy)<sub><sup> </sup></sub>⚙ load balancers. Used for
-[OONI bridges](#ooni-bridges)<sub><sup> </sup></sub>⚙.
+Basic metrics from [HaProxy](#haproxy)&thinsp;⚙ load balancers. Used for
+[OONI bridges](#ooni-bridges)&thinsp;⚙.
 
 
 ### TLS certificate dashboard
 <https://grafana.ooni.org/d/-1mr7sWMk/ssl-certificates>
 
 Certificate expiration times. There are alerts configured in
-[Grafana](#grafana)<sub><sup> </sup></sub>🔧 to alert on expiring certificates.
+[Grafana](#grafana)&thinsp;🔧 to alert on expiring certificates.
 
 
 ### Test helpers dashboard
 <https://grafana.ooni.org/d/Dn1R7QEnz/test-helpers>
 
-Status, uptime and load metrics from the [Test
-helpers](#comp:test_helpers).
+Status, uptime and load metrics from the
+[Test helpers](#test-helpers)&thinsp;⚙.
 
 
 ### Database backup dashboard
 <https://grafana.ooni.org/d/aQjQYhoGz/db-backup>
 
-Metrics, timing and data transferred by [Database backup
-tool](#comp:db_backup)
+Metrics, timing and data transferred by
+[Database backup tool](#database-backup-tool)&thinsp;⚙
+
+By looking at the last 24 hours of run you should be able to see the backup
+being run
+<https://grafana.ooni.org/d/aQjQYhoGz/db-backup?orgId=1&from=now-24h&to=now>
+
+The "Status" chart shows the running status.
+"Uploaded bytes in total" and "Backup time" should be self explanatory.
+
+TIP: If the backup time or size grows too much it could be worth alerting and considering implementing incremental backups.
 
 
 ### Event detector dashboard
 <https://grafana.ooni.org/d/FH2TmwFVz/event-detection?orgId=1&refresh=1m>
 
-Basic metrics from the [social media blocking event
-detector](#comp:detector)
+Basic metrics from the
+[social media blocking event detector](#social-media-blocking-event-detector)&thinsp;⚙
 
 
 ### GeoIP MMDB database dashboard
@@ -353,9 +593,9 @@ Age and size of the GeoIP MMDB database. Also, a chart showing
 discrepancies between the lookup performed by the probes VS the one in
 the API, used to gauge the benefits of using a centralized solution.
 
-Also see [Geolocation script](#geolocation-script)<sub><sup> </sup></sub>🐍
+Also see [Geolocation script](#geolocation-script)&thinsp;🐍
 
-See [GeoIP downloader](#geoip-downloader)<sub><sup> </sup></sub>⚙
+See [GeoIP downloader](#geoip-downloader)&thinsp;⚙
 
 
 ### Host clock offset dashboard
@@ -367,21 +607,22 @@ Measures NTP clock sync and alarms on big offsets
 ### Netdata-specific dashboard
 <https://grafana.ooni.org/d/M1rOa7CWz/netdata?orgId=1&var-instance=backend-fsn.ooni.org:19999>
 
-Shows all the metrics captured by [Netdata](#netdata)<sub><sup> </sup></sub>🔧 - useful for
+Shows all the metrics captured by [Netdata](#netdata)&thinsp;🔧 - useful for
 in-depth performance investigation.
 
 
 ### ASN metadata updater dashboard
 <https://grafana.ooni.org/d/XRihZL-Vk/ansmeta-update?orgId=1&from=now-7d>
 
-Progress, runtime and table size of the [ASN metadata
-updater](#comp:asnmeta_updater)
+Progress, runtime and table size of the [ASN metadata updater](#asn-metadata-updater)&thinsp;⚙
+
+See [Metrics list](#metrics-list)&thinsp;💡
 
 
 ## Netdata
 Netdata <https://www.netdata.cloud/> is a monitoring agent that runs
-locally on the backend servers. It exports host and [Application
-metrics](#topic:appmetrics) to [Prometheus](#prometheus)<sub><sup> </sup></sub>🔧.
+locally on the backend servers. It exports host and
+[Application metrics](#topic:appmetrics) to [Prometheus](#prometheus)&thinsp;🔧.
 
 It also provides a web UI that can be accessed on port 19999. It can be
 useful during development, performance optimization and debugging as it
@@ -398,10 +639,11 @@ ssh ams-pg-test.ooni.org -L 19998:127.0.0.1:19999
 
 Netdata can also be run on a development desktop and be accessed locally
 in order to explore application metrics without having to deploy
-[Prometheus](#tool:prometheus) and [Grafana](#grafana)<sub><sup> </sup></sub>🔧.
+[Prometheus](#tool:prometheus) and [Grafana](#grafana)&thinsp;🔧.
 
-See [Netdata-specific dashboard](#netdata-specific-dashboard)<sub><sup> </sup></sub>📊 of an example of native
+See [Netdata-specific dashboard](#netdata-specific-dashboard)&thinsp;📊 of an example of native
 Netdata metrics.
+
 
 # Log management
 All components of the backend are designed to output logs to Systemd's
@@ -447,31 +689,34 @@ sudo journalctl -f -u ooni-api CODE_FUNC=open_report
 ```
 
 Every host running backend services also sends host to
-monitoring.ooni.org using [Vector](#vector)<sub><sup> </sup></sub>🔧.
+monitoring.ooni.org using [Vector](#vector)&thinsp;🔧.
 
 ![Diagram](https://kroki.io/blockdiag/svg/eNrFks9qwzAMxu95CpNel_gYWOlgDEqfYJdRiv_IiYltBccphdF3n5yyNellt01H6ZO_nyxJh6rXVrTss2AajJhcOo2dGIDtWMQpaNASL9uCvQ6Ds0oki4FVL-wdVMJYjUCKuEhEUGDPt9QbNfQHnEZ46P9Q6DCSQ7kxBijKIynWTy40WWFM-cS6CGaXU11Kw_jMeWtTN8laoeeIwXIpVE_tlUY1eQhptuPSoeRe2PBdP63qtdeb8-y9xPgZ5N9A7t_3xwwqG3fZOHMUrKVDGPKBUCzWuF1vjIivD-LfboLCCQkuT-EJmcQ2tHWmrzG25U1yn71p9vumKWen6xdypu8x)
 
 There is a dedicated ClickHouse instance on monitoring.ooni.org used to
-collect logs. See the [ClickHouse instance for logs](#clickhouse-instance-for-logs)<sub><sup> </sup></sub>⚙.
+collect logs. See the [ClickHouse instance for logs](#clickhouse-instance-for-logs)&thinsp;⚙.
 This is done to avoid adding unnecessary load to the production database
 on FSN that contains measurements and also keep a copy of FSN's logs on
 a different host.
 
-The receiving [Vector](#vector)<sub><sup> </sup></sub>🔧 instance and ClickHouse are
-deployed and configured by [Ansible](#ansible)<sub><sup> </sup></sub>🔧 using the following
+The receiving [Vector](#vector)&thinsp;🔧 instance and ClickHouse are
+deployed and configured by [Ansible](#ansible)&thinsp;🔧 using the following
 playbook:
 <https://github.com/ooni/sysadmin/blob/master/ansible/deploy-monitoring.yml>
 
-See [Logs from FSN notebook](#logs-from-fsn-notebook)<sub><sup> </sup></sub>📔 and [Logs investigation
-notebook](#nb:logs2)
+See [Logs from FSN notebook](#logs-from-fsn-notebook)&thinsp;📔 and
+[Logs investigation notebook](#logs-investigation-notebook)&thinsp;📔
+
 
 ## Slack
 [Slack](https://slack.com/) is used for team messaging and automated
 alerts at the following instance: <https://openobservatory.slack.com/>
 
+
 ### #ooni-bots
-`#ooni-bots` is a [Slack](#slack)<sub><sup> </sup></sub>🔧 channel used for automated
+`#ooni-bots` is a [Slack](#slack)&thinsp;🔧 channel used for automated
 alerts: <https://app.slack.com/client/T37Q8EGUU/C38EJ0CET>
+
 
 # Systemd timers
 Some backend components like the API and Fastpath run as daemons. Many
@@ -487,6 +732,7 @@ To show the existing timers and their next start time run:
 ```bash
 systemctl list-timers
 ```
+
 
 ## Summary of timers
 Here is a summary of the most important timers used in the backend:
@@ -512,8 +758,9 @@ systemctl list-timers
 
 This can be useful for debugging.
 
+
 ## Dehydrated timer
-Runs the Dehydrated ACME tool, see [Dehydrated](#dehydrated)<sub><sup> </sup></sub>⚙
+Runs the Dehydrated ACME tool, see [Dehydrated](#dehydrated)&thinsp;⚙
 
 is a simple script that provides ACME support for Letsencrypt. It's
 integrated with Nginx or HaProxy with custom configuration or a small
@@ -521,80 +768,91 @@ script as \"glue\".
 
 [Source](https://github.com/ooni/sysadmin/blob/master/ansible/roles/dehydrated/templates/dehydrated.timer)
 
+
 ## Detector timer
-Runs the [social media blocking event detector](#social-media-blocking-event-detector)<sub><sup> </sup></sub>⚙. It is
-installed by the [detector package](#detector-package)<sub><sup> </sup></sub>📦.
+Runs the [social media blocking event detector](#social-media-blocking-event-detector)&thinsp;⚙. It is
+installed by the [detector package](#detector-package)&thinsp;📦.
+
 
 ## ooni-api-uploader timer
-Runs the [Measurement uploader](#measurement-uploader)<sub><sup> </sup></sub>⚙. It is installed by the
-[analysis package](#analysis-package)<sub><sup> </sup></sub>📦. Runs `/usr/bin/ooni_api_uploader.py`
+Runs the [Measurement uploader](#measurement-uploader)&thinsp;⚙. It is installed by the
+[analysis package](#analysis-package)&thinsp;📦. Runs `/usr/bin/ooni_api_uploader.py`
 
 [Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/debian/ooni-api-uploader.timer)
 
+
 ## ooni-db-backup timer
-Runs the [Database backup tool](#database-backup-tool)<sub><sup> </sup></sub>⚙ as
-`/usr/bin/ooni-db-backup` Also installed by the [analysis
-package](#pkg:analysis).
+Runs the [Database backup tool](#database-backup-tool)&thinsp;⚙ as
+`/usr/bin/ooni-db-backup` Also installed by the
+[analysis package](#analysis-package)&thinsp;📦.
 
 [Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/debian/ooni-db-backup.timer)
 
+
 ## ooni-download-geoip timer
-Fetches GeoIP databases, installed by the [ooni-api](#api)<sub><sup> </sup></sub>⚙. Runs
+Fetches GeoIP databases, installed by the [ooni-api](#api)&thinsp;⚙. Runs
 `/usr/bin/ooni_download_geoip.py`
 
-Monitored with the [GeoIP dashboard](#geoip-mmdb-database-dashboard)<sub><sup> </sup></sub>📊
+Monitored with the [GeoIP dashboard](#geoip-mmdb-database-dashboard)&thinsp;📊
 
-See [GeoIP downloader](#geoip-downloader)<sub><sup> </sup></sub>⚙
+See [GeoIP downloader](#geoip-downloader)&thinsp;⚙
 
 [Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/debian/ooni-download-geoip.timer)
 
+
 ## ooni-rotation timer
-Runs the test helper rotation script, installed by the [analysis
-package](#pkg:analysis). Runs `/usr/bin/rotation`
+Runs the test helper rotation script, installed by the
+[analysis package](#analysis-package)&thinsp;📦. Runs `/usr/bin/rotation`
 
 [Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/debian/ooni-rotation.timer)
 
+
 ## ooni-update-asn-metadata timer
-Fetches [ASN](#asn)<sub><sup> </sup></sub>💡 metadata, installed by the [analysis
-package](#pkg:analysis). Runs `/usr/bin/analysis --update-asnmeta`
+Fetches [ASN](#asn)&thinsp;💡 metadata, installed by the
+[analysis package](#analysis-package)&thinsp;📦. Runs `/usr/bin/analysis --update-asnmeta`
 
 [Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/debian/ooni-update-asn-metadata.timer)
 
+
 ## ooni-update-citizenlab
-Fetches CitizenLab data from GitHub, installed by the [analysis
-package](#pkg:analysis). Runs `/usr/bin/analysis --update-citizenlab`
+Fetches CitizenLab data from GitHub, installed by the
+[analysis package](#analysis-package)&thinsp;📦. Runs `/usr/bin/analysis --update-citizenlab`
 
 [Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/debian/ooni-update-citizenlab.timer)
 
+
 ## ooni-update-fingerprints
-Fetches fingerprints from GitHub, installed by the [analysis
-package](#pkg:analysis). Runs `/usr/bin/analysis --update-fingerprints`
+Fetches fingerprints from GitHub, installed by the
+[analysis package](#analysis-package)&thinsp;📦. Runs `/usr/bin/analysis --update-fingerprints`
 
 [Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/debian/ooni-update-fingerprints.timer)
+
 
 # Nettest names
 Nettest specifications are kept at
 <https://github.com/ooni/spec/tree/master/nettests>
 
+
 ## Web connectivity test
-Nettest for HTTP/HTTPS connectivity named `web_connectivity`. See
-<https://github.com/ooni/spec/blob/master/nettests/ts-017-web-connectivity.md>
+Nettest for HTTP/HTTPS connectivity named `web_connectivity`.
+See <https://github.com/ooni/spec/blob/master/nettests/ts-017-web-connectivity.md>
+
 
 ## Signal test
-Nettest for [Signal Private Messenger](https://signal.org/) named
-`signal` See
-<https://github.com/ooni/spec/blob/master/nettests/ts-029-signal.md>
+Nettest for [Signal Private Messenger](https://signal.org/) named `signal`
+See <https://github.com/ooni/spec/blob/master/nettests/ts-029-signal.md>
+
 
 # API
 The API provides entry points used by the probes,
-[Explorer](#ui:explorer) [Test List Editor](#test-list-editor)<sub><sup> </sup></sub>🖱 and other UIs, and
+[Explorer](#ui:explorer) [Test List Editor](#test-list-editor)&thinsp;🖱 and other UIs, and
 researchers.
 
 Entry points under `/api/v1/` are meant for public consumption and
 versioned. Those under `/api/_/` are for internal use.
 
 The API is versioned. Access is rate limited based on source IP address
-and access tokens. See [Rate limiting and quotas](#rate-limiting-and-quotas)<sub><sup> </sup></sub>🐝 for
+and access tokens. See [Rate limiting and quotas](#rate-limiting-and-quotas)&thinsp;🐝 for
 details.
 
 due to the computational cost of running heavy queries on the database.
@@ -605,8 +863,8 @@ specification is published at <https://api.ooni.io/apispec_1.json>
 
 The file is also tracked at
 <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/docs/apispec.json>
-It is checked for consistency by CI in the [API end-to-end
-test](#topic:e2e-test), see
+It is checked for consistency by CI in the
+[API end-to-end test](#api-end-to-end-test)&thinsp;💡, see
 <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/.github/workflows/test_new_api.yml#L27>
 
 To regenerate the spec file when implementing changes to the API use:
@@ -638,78 +896,82 @@ rate limiting:
 
 > **important**
 > Various queries are designed to support active/standby or active/active
-> database setups. See [Overall design](#overall-design)<sub><sup> </sup></sub>💡 for details.
+> database setups. See [Overall design](#overall-design)&thinsp;💡 for details.
+
 
 ## API cache
-The API uses cacheing functions provided by [Nginx](#nginx)<sub><sup> </sup></sub>⚙.
+The API uses cacheing functions provided by [Nginx](#nginx)&thinsp;⚙.
 
 Caching functions `cachedjson` and `nocachejson` are defined at
 <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/utils.py#L18>
+
 
 ## ASN
 Autonomous System Number, described at
 <https://en.wikipedia.org/wiki/Autonomous_system_(Internet>) It is
 stored as `probe_asn` in measurements, and as `probe_asn` column in the
-[fastpath table](#fastpath-table)<sub><sup> </sup></sub>⛁. Used as a search term in [Searching for
-measurements](#api:list_msmts) and [Aggregation and MAT](#aggregation-and-mat)<sub><sup> </sup></sub>🐝
+[fastpath table](#fastpath-table)&thinsp;⛁. Used as a search term in
+[Searching for measurements](#api:list_msmts) and [Aggregation and MAT](#aggregation-and-mat)&thinsp;🐝
 
-The lookup system in the API is updated by the [ASN metadata
-updater](#comp:asnmeta_updater). See [ASN metadata updater
-dashboard](#dash:asnmeta_updater) and [ooni-update-asn-metadata
+The lookup system in the API is updated by the
+[ASN metadata updater](#asn-metadata-updater)&thinsp;⚙. See
+[ASN metadata updater dashboard](#asn-metadata-updater-dashboard)&thinsp;📊 and [ooni-update-asn-metadata
 timer](#timer:asnmeta_updater).
+
 
 ## Geolocation
 The API and implements
 [geolocation](https://en.wikipedia.org/wiki/Internet_geolocation) in
-order to identify the [ASN](#asn)<sub><sup> </sup></sub>💡
+order to identify the [ASN](#asn)&thinsp;💡
+
 
 ## Auth
 This module implements browser authentication and user accounts. See
-[Probe services](#probe-services)<sub><sup> </sup></sub>🐝 for probe authentication.
+[Probe services](#probe-services)&thinsp;🐝 for probe authentication.
 
 It is designed to fit the following requirements:
 
--   Never store users email address centrally nor IP addresses nor
+ * Never store users email address centrally nor IP addresses nor
     passwords
 
--   Verify email to limit spambots. Do not use CAPCHAs or other 3rd
+ * Verify email to limit spambots. Do not use CAPCHAs or other 3rd
     party services
 
--   Support multiple sessions and multiple devices, ability to register
+ * Support multiple sessions and multiple devices, ability to register
     multiple times
 
--   Do not leak the existence of absence of accounts for a given email
+ * Do not leak the existence of absence of accounts for a given email
     address
 
 Workflow:
 
--   To register the UIs call
+ * To register the UIs call
     <https://api.ooni.io/apidocs/#/default/post_api_v1_user_register>
     using an email address and the user receives a temporary login link
     by email
 
--   Upon clicking on the link the UIs call
+ * Upon clicking on the link the UIs call
     <https://api.ooni.io/apidocs/#/default/get_api_v1_user_login> and
     receive a long-lived JWT in a cookie
 
--   The UIs call any API entry point sending the JWT cookie
+ * The UIs call any API entry point sending the JWT cookie
 
--   The UIs call
+ * The UIs call
     <https://api.ooni.io/apidocs/#/default/get_api_v1_user_refresh_token>
     as needed to refresh the JWT
 
 The API als provides entry points to:
 
--   Get account metadata
+ * Get account metadata
     <https://api.ooni.io/apidocs/#/default/get_api___account_metadata>
 
--   Get role for an existing account
+ * Get role for an existing account
     <https://api.ooni.io/apidocs/#/default/get_api_v1_get_account_role__email_address_>
 
--   Set account roles
+ * Set account roles
     <https://api.ooni.io/apidocs/#/default/post_api_v1_set_account_role>
 
--   Expunge sessions (see below)
+ * Expunge sessions (see below)
     <https://api.ooni.io/apidocs/#/default/post_api_v1_set_session_expunge>
 
 Browsers sessions can be expunged to require users to log in again. This
@@ -724,10 +986,11 @@ This is due to the use of a configuration variable
 parameter is read from the API configuration file. The values are
 different across deployment stages as a security feature.
 
-Also see [Creating admin API accounts](#creating-admin-api-accounts)<sub><sup> </sup></sub>📒 for more
+Also see [Creating admin API accounts](#creating-admin-api-accounts)&thinsp;📒 for more
 details.
 
 [Sources](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/auth.py)
+
 
 ## Measurements
 This module primarily provides entry points to access measurements,
@@ -737,6 +1000,7 @@ Mounted under `/api/v1/measurement/`
 
 [Sources](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/measurements.py)
 
+
 ### Searching for measurements
 The entry point
 <https://api.ooni.io/apidocs/#/default/get_api_v1_measurements> provides
@@ -744,15 +1008,16 @@ measurement searching and listing.
 
 It is primarily used by <https://explorer.ooni.org/search>
 
+
 ### Getting measurement bodies
 Various API entry points allow accessing measurement bodies. Typically
 the lookup is done by `measurement_uid`:
 
--   <https://api.ooni.io/apidocs/#/default/get_api_v1_measurement__measurement_uid_>
+ * <https://api.ooni.io/apidocs/#/default/get_api_v1_measurement__measurement_uid_>
 
--   <https://api.ooni.io/apidocs/#/default/get_api_v1_raw_measurement>
+ * <https://api.ooni.io/apidocs/#/default/get_api_v1_raw_measurement>
 
--   <https://api.ooni.io/apidocs/#/default/get_api_v1_measurement_meta>
+ * <https://api.ooni.io/apidocs/#/default/get_api_v1_measurement_meta>
 
 For legacy reasons measurements can also be accessed by `report_id` +
 `input` instead of `measurement_uid`
@@ -765,51 +1030,52 @@ The lookup process can access measurement bodies from multiple
 locations. The lookup is performed in different order for different
 measurements based on the likelihood of success:
 
--   Scan the local spool directory
+ * Scan the local spool directory
     `/var/lib/ooniapi/measurements/incoming/` for fresh measurements
 
--   Scan other API hosts (if any) for fresh measurements. This is
+ * Scan other API hosts (if any) for fresh measurements. This is
     required to support active/active backend deployments.
 
--   Lookup the measurement data in [jsonl table](#jsonl-table)<sub><sup> </sup></sub>⛁ and then
-    fetch the required [JSONL files](#jsonl-files)<sub><sup> </sup></sub>💡 from [S3 data
-    bucket](#topic:s3data) and extract the content.
+ * Lookup the measurement data in [jsonl table](#jsonl-table)&thinsp;⛁ and then
+    fetch the required [JSONL files](#jsonl-files)&thinsp;💡 from
+    [S3 data bucket](#s3-data-bucket)&thinsp;💡 and extract the content.
+
 
 #### Performance considerations
-Fetching data from the [S3 data bucket](#s3-data-bucket)<sub><sup> </sup></sub>💡 bucket can be
+Fetching data from the [S3 data bucket](#s3-data-bucket)&thinsp;💡 bucket can be
 resource-intensive. However:
 
--   Very recent measurements are likely to be found in the local on-disk
-    queue instead of having to fetch them from S3. See [Measurement
-    uploader](#comp:uploader) for details.
+ * Very recent measurements are likely to be found in the local on-disk
+    queue instead of having to fetch them from S3. See
+    [Measurement uploader](#measurement-uploader)&thinsp;⚙ for details.
 
--   Frequently accessed measurements benefit from the [API
-    cache](#topic:apicache).
+ * Frequently accessed measurements benefit from the [API cache](#api-cache)&thinsp;💡.
 
--   Measurement bodies are rarely accessed. The overall amount of
+ * Measurement bodies are rarely accessed. The overall amount of
     measurements is too large for users to explore a significant
     fraction through the web UIs.
 
 Possible improvements are:
 
--   Compress JSONL files using <https://github.com/facebook/zstd> with
+ * Compress JSONL files using <https://github.com/facebook/zstd> with
     high compression rates
 
--   Use a seekable format and store the measurement location in the
-    JSONL file in the [jsonl table](#jsonl-table)<sub><sup> </sup></sub>⛁ expressed in bytes. See
+ * Use a seekable format and store the measurement location in the
+    JSONL file in the [jsonl table](#jsonl-table)&thinsp;⛁ expressed in bytes. See
     <https://github.com/facebook/zstd/blob/dev/contrib/seekable_format/README.md>
 
 <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/measurements.py>
 
+
 ### Measurement feedback
 This part of the API is used to collect and serve user feedback on
-measurements. It uses [msmt_feedback table](#msmt_feedback-table)<sub><sup> </sup></sub>⛁ and
+measurements. It uses [msmt_feedback table](#msmt_feedback-table)&thinsp;⛁ and
 provides:
 
--   Getting feedback for an existing measurement
-    <https://api.ooni.io/apidocs/#/default/get_api>**measurement_feedback*measurement_uid*
+ * Getting feedback for an existing measurement
+    <https://api.ooni.io/apidocs/#/default/get_api___measurement_feedback__measurement_uid_>
 
--   Submitting new feedback
+ * Submitting new feedback
     <https://api.ooni.io/apidocs/#/default/post_api___measurement_feedback>
 
 All users can access feedbacks but only authenticated ones can submit
@@ -839,9 +1105,10 @@ Valid feedback statuses are:
 
 [Sources](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/measurements.py)
 
+
 ## Aggregation and MAT
 The aggregation API leverages the OLAP features of
-[ClickHouse](#clickhouse)<sub><sup> </sup></sub>⚙ to provide summaries and statistics on
+[ClickHouse](#clickhouse)&thinsp;⚙ to provide summaries and statistics on
 measurements. It is primarily used by the
 [MAT](https://explorer.ooni.org/chart/mat). It can also be used to
 implement other statistics in Explorer or accessed directly by
@@ -857,8 +1124,9 @@ point](https://api.ooni.io/apidocs/#/default/get_api_v1_aggregation)
 > measurements are constantly being inserted and old measurements might be
 > occasionally reprocessed.
 
-Also see [Aggregation cache monitoring](#aggregation-cache-monitoring)<sub><sup> </sup></sub>🐍 and [Investigating
-heavy aggregation queries runbook](#run:inv_heavy_queries).
+Also see [Aggregation cache monitoring](#aggregation-cache-monitoring)&thinsp;🐍 and
+[Investigating heavy aggregation queries runbook](#investigating-heavy-aggregation-queries-runbook)&thinsp;📒.
+
 
 ## Probe services
 This part of the API is implemented in the `probe_services.py` module.
@@ -867,24 +1135,26 @@ probes.
 
 [Sources](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/probe_services.py)
 
+
 ### Check-in
 This entry point is the preferred way for probes to:
 
--   Geo-resolve their IP address to [ASN](#asn)<sub><sup> </sup></sub>💡 and network name.
+ * Geo-resolve their IP address to [ASN](#asn)&thinsp;💡 and network name.
     See
 
--   Receive a list of URLs for [Web connectivity test](#web-connectivity-test)<sub><sup> </sup></sub>Ⓣ
+ * Receive a list of URLs for [Web connectivity test](#web-connectivity-test)&thinsp;Ⓣ
 
--   Receive a list of test helpers
+ * Receive a list of test helpers
 
--   Set flags to implement incremental rollouts and A/B testing new
+ * Set flags to implement incremental rollouts and A/B testing new
     features
 
 See <https://api.ooni.io/apidocs/#/default/post_api_v1_check_in>
 
 Test lists are prioritized based on the country code and
-[ASN](#asn)<sub><sup> </sup></sub>💡 of the probes, as well as flags indicating if the
+[ASN](#asn)&thinsp;💡 of the probes, as well as flags indicating if the
 probe is connected to WiFi and the battery is being charged.
+
 
 ## Tor targets
 Tor targets are served: at path `/api/v1/test-list/tor-targets`. See
@@ -894,8 +1164,9 @@ They are read from a configuration file. The path is set in the main
 configuration file under `TOR_TARGETS_CONFFILE`. It usually is
 `/etc/ooni/tor_targets.json`.
 
-To make changes in the Tor targets see the runbook [Updating tor
-targets](#run:tor_targets)
+To make changes in the Tor targets see the runbook
+[Updating tor targets](#updating-tor-targets)&thinsp;📒
+
 
 ## Test helpers list
 This entry point provides a list of test helpers to the probes:
@@ -909,34 +1180,36 @@ This entry point provides a list of test helpers to the probes:
 See
 <https://github.com/ooni/backend/blob/86c6c7e1d297fb8361a162f6081e5e138731e492/api/ooniapi/probe_services.py#L480>
 
+
 ### Miscellaneous probe configuration data
 Various endpoints provide data to configure the probe:
 
--   <https://api.ooni.io/apidocs/#/default/get_api_v1_collectors>
+ * <https://api.ooni.io/apidocs/#/default/get_api_v1_collectors>
 
--   <https://api.ooni.io/apidocs/#/default/get_api_v1_test_list_psiphon_config>
+ * <https://api.ooni.io/apidocs/#/default/get_api_v1_test_list_psiphon_config>
 
--   <https://api.ooni.io/apidocs/#/default/post_bouncer_net_tests>
+ * <https://api.ooni.io/apidocs/#/default/post_bouncer_net_tests>
+
 
 ### Probe registration and login
 Two entry points provide probe registration and login. The mechanism and
 the accounts are legacy and completely independent from
-[Auth](#auth)<sub><sup> </sup></sub>🐝.
+[Auth](#auth)&thinsp;🐝.
 
 The workflows follow these steps:
 
--   A new probe registers and receives a `client_id` token using
+ * A new probe registers and receives a `client_id` token using
     <https://api.ooni.io/apidocs/#/default/post_api_v1_register>
 
--   The token is stored permanently on the probe
+ * The token is stored permanently on the probe
 
--   The probe calls
+ * The probe calls
     <https://api.ooni.io/apidocs/#/default/post_api_v1_login> when
     needed and receives a temporary token
 
--   The probe calls check-in supplying the temporary token
+ * The probe calls check-in supplying the temporary token
 
-On [backend-fsn.ooni.org](#backend-fsn.ooni.org)<sub><sup> </sup></sub>🖥 the two entry points are currently
+On [backend-fsn.ooni.org](#backend-fsn.ooni.org)&thinsp;🖥 the two entry points are currently
 being redirected to a different host implementing
 <https://orchestrate.ooni.io/> while other backend hosts are exposing
 the endpoints in the API.
@@ -945,6 +1218,7 @@ the endpoints in the API.
 > The probe authentication implemented in the API is not backward
 > compatible with credentials already generated by Orchestrate and stored
 > by existing probes.
+
 
 ### Measurement submission
 The probe services module also provides entry points to submit
@@ -960,6 +1234,7 @@ measurements. The submission is done in steps:
     <https://api.ooni.io/apidocs/#/default/post_report>*report_id*close
     Closing reports is currently unnecessary.
 
+
 ### Robots.txt
 Probe services also serve the `robots.txt` file at
 <https://api.ooni.io/robots.txt>
@@ -969,10 +1244,11 @@ This is use to block or throttle search engines and other bots that in
 the past caused significant load on the API.
 
 > **note**
-> some aggressive bots might ignore `robots.txt`. See [Limiting
-> scraping](#run:scraping)
+> some aggressive bots might ignore `robots.txt`. See
+> [Limiting scraping](#limiting-scraping)&thinsp;📒
 
 <https://api.ooni.io/apidocs/#/default/get_stats>
+
 
 ### Incident management
 The incident management module implements ways for users to create,
@@ -987,42 +1263,43 @@ users and additionally can publish, unpublish and delete incidents.
 All the routes related to this module are mounted under
 `/api/v1/incidents/`:
 
--   Search and list incidents:
+ * Search and list incidents:
     <https://api.ooni.io/apidocs/#/default/get_api_v1_incidents_search>
 
--   Show an incident:
+ * Show an incident:
     <https://api.ooni.io/apidocs/#/default/get_api_v1_incidents_show__incident_id_>
 
--   Create or update an incident:
+ * Create or update an incident:
     <https://api.ooni.io/apidocs/#/default/post_api_v1_incidents__action_>
     Search/list incidents with:
 
--   Filtering by domain/cc/asn/creator id/ and so on
+ * Filtering by domain/cc/asn/creator id/ and so on
 
--   Sort by creation/edit date, event date, and so on
+ * Sort by creation/edit date, event date, and so on
 
 Users can only update/delete incidents created by themselves. Admins can
 update/delete everything.
 
-Incidents are stored in the [incidents table](#incidents-table)<sub><sup> </sup></sub>⛁
+Incidents are stored in the [incidents table](#incidents-table)&thinsp;⛁
 
 See
 [Sources](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/incidents.py)
+
 
 ### Prioritization
 This module implements reactive prioritization for URLs in the test list
 served to the probes.
 
 `/api/v1/check-in` and `/api/v1/test-list/urls` provide dynamic URL
-tests lists for [Web connectivity test](#web-connectivity-test)<sub><sup> </sup></sub>Ⓣ based on the
+tests lists for [Web connectivity test](#web-connectivity-test)&thinsp;Ⓣ based on the
 CitizenLab URL list and the measurements count from the last 7 days.
 
-The `prio.py` module is used mainly by the [Probe services](#probe-services)<sub><sup> </sup></sub>🐝 API
-and secondarily by the `private_api_check_in` method in the [Private
-entry points](#api:private).
+The `prio.py` module is used mainly by the [Probe services](#probe-services)&thinsp;🐝 API
+and secondarily by the `private_api_check_in` method in the
+[Private entry points](#private-entry-points)&thinsp;🐝.
 
-For changing prioritization rules see [Prioritization rules
-UI](#ui:priomgm) and [Prioritization management](#prioritization-management)<sub><sup> </sup></sub>🐝
+For changing prioritization rules see
+[Prioritization rules UI](#ui:priomgm) and [Prioritization management](#prioritization-management)&thinsp;🐝
 
 ![Diagram](https://kroki.io/blockdiag/svg/eNrNU01Lw0AUvPdXLOnVNPeKgkiEgmixvYmE_XjbLN3sC7svIoj_3axpY0MTb6J7nZllZpgnLMq9MnzH3mdMgeaNpSKUvAZ2xTw2ToES-HY5Y8nao4CQsGeJFn0LJ3OtoX3JS4Q1D1RzKhlxYaGlHX8Ba00d4IKVHnSUlUR1WGbZzlDZiIXEKkN0JhNc7sGpVKFsKnDEyaDLhEWRVdy4I14M8EWl5rL1SeBDwYMrCAIV1gRKOyNf5hpvi9ob9IYMhD-wODRwam3c_D_r72a9WjIPEswrsCpUNJhBHIHWHfPuMIMxwi9GOK7vxG6se8pmt2WWXo9Hs1yAjZr142Y72UBUn8QdEX2jkXt2Ib1i9bDJn7bjdxSVkxvpf-AN4c976rMeeumlm_w-v92eFRf5_cn3ZFmC3KfGRfrHJwZAcmE=)
 
@@ -1033,21 +1310,21 @@ each shape to see related documentation.
 In the diagram arrows show information flow.
 
 The prioritization system implements a feedback mechanism to provide
-efficient coverage of URLs in [Web connectivity test](#web-connectivity-test)<sub><sup> </sup></sub>Ⓣ in
-[ASN](#asn)<sub><sup> </sup></sub>💡 with low coverage.
+efficient coverage of URLs in [Web connectivity test](#web-connectivity-test)&thinsp;Ⓣ in
+[ASN](#asn)&thinsp;💡 with low coverage.
 
-Measurements from probes are received by the [API](#api)<sub><sup> </sup></sub>⚙, sent to
-the [Fastpath](#fastpath)<sub><sup> </sup></sub>⚙ and then stored in the [fastpath
-table](#tbl:fastpath). [ClickHouse](#clickhouse)<sub><sup> </sup></sub>⚙ automatically
-updates the [counters_asn_test_list table](#counters_asn_test_list-table)<sub><sup> </sup></sub>⛁
+Measurements from probes are received by the [API](#api)&thinsp;⚙, sent to
+the [Fastpath](#fastpath)&thinsp;⚙ and then stored in the
+[fastpath table](#tbl:fastpath). [ClickHouse](#clickhouse)&thinsp;⚙ automatically
+updates the [counters_asn_test_list table](#counters_asn_test_list-table)&thinsp;⛁
 in real time. See the link for details on the table contents.
 
 Later on probes call API entry points like
 <https://api.ooni.io/apidocs/#/default/post_api_v1_check_in> and receive
-new URLs (inputs) for [Web connectivity test](#web-connectivity-test)<sub><sup> </sup></sub>Ⓣ. The URLs
-are ordered according to the priorities set in the [url_priorities
-table](#tbl:url_priorities) and the amount of measurements gathered in
-the past days from probes in the same [ASN](#asn)<sub><sup> </sup></sub>💡.
+new URLs (inputs) for [Web connectivity test](#web-connectivity-test)&thinsp;Ⓣ. The URLs
+are ordered according to the priorities set in the
+[url_priorities table](#url_priorities-table)&thinsp;⛁ and the amount of measurements gathered in
+the past days from probes in the same [ASN](#asn)&thinsp;💡.
 
 [prio.py
 sources](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/prio.py)
@@ -1060,11 +1337,12 @@ sources](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab52956
 
 For debugging see
 <https://api.ooni.io/apidocs/#/default/get_api___debug_prioritization>
-and [Test list prioritization monitoring](#test-list-prioritization-monitoring)<sub><sup> </sup></sub>🐍
+and [Test list prioritization monitoring](#test-list-prioritization-monitoring)&thinsp;🐍
+
 
 ### Priorities and weights
-URLs have priorities based on the rules from the [url_priorities
-table](#tbl:url_priorities).
+URLs have priorities based on the rules from the
+[url_priorities table](#url_priorities-table)&thinsp;⛁.
 
 Prioritization rules can be viewed and edited by accounts with `admin`
 rights on <https://test-lists.ooni.org/prioritization>
@@ -1074,7 +1352,7 @@ The
 function calculates priority and weight for each supplied URL.
 
 Priorities are calculated by matching all the prioritization rules to
-each URL in the [citizenlab table](#citizenlab-table)<sub><sup> </sup></sub>⛁. They do not depend
+each URL in the [citizenlab table](#citizenlab-table)&thinsp;⛁. They do not depend
 on the amount of past measurements.
 
 Priorities values are relative, e.g. if one URL has a priority of 800
@@ -1084,13 +1362,13 @@ than the latter.
 The URLs sent to the probes are ordered from the most urgent to the
 least urgent by calculating weights as `priority / measurement count`.
 This is done with a granularity of a single country code +
-[ASN](#asn)<sub><sup> </sup></sub>💡 pair.
+[ASN](#asn)&thinsp;💡 pair.
 
-Probes start performing [Web connectivity test](#web-connectivity-test)<sub><sup> </sup></sub>Ⓣ from the
+Probes start performing [Web connectivity test](#web-connectivity-test)&thinsp;Ⓣ from the
 top of the list.
 
-You can inspect generated priorities with the [Priorities and weights
-notebook](#nb:weights) or using the API at
+You can inspect generated priorities with the
+[Priorities and weights notebook](#priorities-and-weights-notebook)&thinsp;📔 or using the API at
 <https://api.ooni.io/apidocs/>*/default/get_api_v1_test_list_urls or
 <https://api.ooni.io/apidocs/>*/default/get_api\_\_\_debug_prioritization
 e.g.:
@@ -1099,74 +1377,76 @@ e.g.:
 
     $ curl -s 'https://ams-pg-test.ooni.org/api/_/debug_prioritization?probe_cc=IT&probe_asn=3269&limit=9999' | jq -S | less
 
+
 ## Private entry points
 The `private.py` module provides many entry points not meant for public
 consumption. They are not versioned, mounted under `/api/_` and used
 exclusively by:
 
--   [Explorer](#explorer)<sub><sup> </sup></sub>🖱
+ * [Explorer](#explorer)&thinsp;🖱
 
--   [Test List Editor](#test-list-editor)<sub><sup> </sup></sub>🖱
+ * [Test List Editor](#test-list-editor)&thinsp;🖱
 
 Statistics and summaries, mainly for Explorer:
 
--   <https://api.ooni.io/apidocs/#/default/get_api___asn_by_month>
+ * <https://api.ooni.io/apidocs/#/default/get_api___asn_by_month>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___circumvention_runtime_stats>
+ * <https://api.ooni.io/apidocs/#/default/get_api___circumvention_runtime_stats>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___circumvention_stats_by_country>
+ * <https://api.ooni.io/apidocs/#/default/get_api___circumvention_stats_by_country>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___countries>
+ * <https://api.ooni.io/apidocs/#/default/get_api___countries>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___countries_by_month>
+ * <https://api.ooni.io/apidocs/#/default/get_api___countries_by_month>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___country_overview>
+ * <https://api.ooni.io/apidocs/#/default/get_api___country_overview>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___domain_metadata>
+ * <https://api.ooni.io/apidocs/#/default/get_api___domain_metadata>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___domains>
+ * <https://api.ooni.io/apidocs/#/default/get_api___domains>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___global_overview>
+ * <https://api.ooni.io/apidocs/#/default/get_api___global_overview>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___global_overview_by_month>
+ * <https://api.ooni.io/apidocs/#/default/get_api___global_overview_by_month>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___im_networks>
+ * <https://api.ooni.io/apidocs/#/default/get_api___im_networks>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___im_stats>
+ * <https://api.ooni.io/apidocs/#/default/get_api___im_stats>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___network_stats>
+ * <https://api.ooni.io/apidocs/#/default/get_api___network_stats>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___networks>
+ * <https://api.ooni.io/apidocs/#/default/get_api___networks>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___test_coverage>
+ * <https://api.ooni.io/apidocs/#/default/get_api___test_coverage>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___test_names>
+ * <https://api.ooni.io/apidocs/#/default/get_api___test_names>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___vanilla_tor_stats>
+ * <https://api.ooni.io/apidocs/#/default/get_api___vanilla_tor_stats>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___website_networks>
+ * <https://api.ooni.io/apidocs/#/default/get_api___website_networks>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___website_stats>
+ * <https://api.ooni.io/apidocs/#/default/get_api___website_stats>
 
--   <https://api.ooni.io/apidocs/#/default/get_api___website_urls>
+ * <https://api.ooni.io/apidocs/#/default/get_api___website_urls>
 
 Misc functions:
 
--   [ASN](#asn)<sub><sup> </sup></sub>💡 metadata
+ * [ASN](#asn)&thinsp;💡 metadata
     <https://api.ooni.io/apidocs/#/default/get_api___asnmeta>
 
--   Check uploaded reports
+ * Check uploaded reports
     <https://api.ooni.io/apidocs/#/default/get_api___check_report_id>
 
 For debugging:
 <https://api.ooni.io/apidocs/#/default/get_api___quotas_summary> See
-[Rate limiting and quotas](#rate-limiting-and-quotas)<sub><sup> </sup></sub>🐝 for details.
+[Rate limiting and quotas](#rate-limiting-and-quotas)&thinsp;🐝 for details.
 
 > **note**
 > There are other entry points under `/api/_` that are not part of this
-> module, e.g. [OONI Run](#ooni-run)<sub><sup> </sup></sub>🐝
+> module, e.g. [OONI Run](#ooni-run)&thinsp;🐝
 
 [Sources](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/private.py)
+
 
 ## Rate limiting and quotas
 The API is provided with rate limiting functions and traffic quotas to
@@ -1193,13 +1473,14 @@ receive HTTP 429 (Too Many Requests) until quotas are incremented again.
 Increments happen every hour.
 
 There's an API call to get a summary of used quotas:
-<https://api.ooni.io/api/_/quotas_summary> See [Investigating heavy
-aggregation queries runbook](#run:inv_heavy_queries) for usage examples.
+<https://api.ooni.io/api/_/quotas_summary>
+See [Investigating heavy aggregation queries runbook](#investigating-heavy-aggregation-queries-runbook)&thinsp;📒 for usage examples.
 
 Configuration for rate limiting is at:
 <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/app.py>
 
 [Sources](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/rate_limit_quotas.py)
+
 
 ## OONI Run
 This module implements management of OONI Run links.
@@ -1207,16 +1488,16 @@ This module implements management of OONI Run links.
 All the routes related to this module are mounted under
 `/api/v1/ooni_run/`:
 
--   List OONIRun descriptors
+ * List OONIRun descriptors
     <https://api.ooni.io/apidocs/#/default/get_api___ooni_run_list>
 
--   Archive an OONIRun descriptor and all its past versions
+ * Archive an OONIRun descriptor and all its past versions
     <https://api.ooni.io/apidocs/#/default/post_api>**ooni_run_archive*ooni_run_link_id*
 
--   Create a new oonirun link or a new version for an existing one
+ * Create a new oonirun link or a new version for an existing one
     <https://api.ooni.io/apidocs/#/default/post_api___ooni_run_create>
 
--   Fetch OONIRun descriptor by creation time or the newest one
+ * Fetch OONIRun descriptor by creation time or the newest one
     <https://api.ooni.io/apidocs/#/default/get_api>**ooni_run_fetch*ooni_run_link_id*
 
 Specifications are published at:
@@ -1232,28 +1513,29 @@ the probe to access either the latest translation for a given
 
 [Sources](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/oonirun.py)
 
+
 ## CitizenLab
 The `citizenlab.py` module contains entry points related to managing
-both the [CitizenLab Test List](#citizenlab-test-list)<sub><sup> </sup></sub>💡 and [Prioritization
-management](#api:priomgm).
+both the [CitizenLab Test List](#citizenlab-test-list)&thinsp;💡 and
+[Prioritization management](#prioritization-management)&thinsp;🐝.
 
 This subchapter describes the first part.
 
 The following entry points allow authenticated users to propose changes
-to the CitizenLab repository. It is a private API used by [Test List
-Editor](#ui:tle). The API manages an internal clone of the CitizenLab
+to the CitizenLab repository. It is a private API used by
+[Test List Editor](#test-list-editor)&thinsp;🖱. The API manages an internal clone of the CitizenLab
 repository for each user that goes through the workflow.
 
 Entry points:
 
--   Fetch Citizenlab URL list and additional metadata
-    <https://api.ooni.io/apidocs/#/default/get_api>**url_submission_test_list*country_code*
+ * Fetch Citizenlab URL list and additional metadata
+   <https://api.ooni.io/apidocs/#/default/get_api___url_submission_test_list__country_code_>
 
--   Create/update/delete a CitizenLab URL entry. Changes are stored in a
+ * Create/update/delete a CitizenLab URL entry. Changes are stored in a
     temporary git repository in the API
     <https://api.ooni.io/apidocs/#/default/post_api_v1_url_submission_update_url>
 
--   Submit changes by opening a pull request on the CitizenLab
+ * Submit changes by opening a pull request on the CitizenLab
     repository
     <https://api.ooni.io/apidocs/#/default/post_api_v1_url_submission_submit>
 
@@ -1275,62 +1557,69 @@ stateDiagram-v2
 
 Description of the states:
 
--   ● - the local repository does not exist yet
+ * ● - the local repository does not exist yet
 
--   CLEAN - the local repository has no changes and it is in sync with
+ * CLEAN - the local repository has no changes and it is in sync with
     the CitizenLab public repository
 
--   IN_PROGRESS - there are some changes in the working tree but they
+ * IN_PROGRESS - there are some changes in the working tree but they
     have not been pushed to the public repository's pull request branch
 
--   PR_OPEN - a pull request is open
+ * PR_OPEN - a pull request is open
 
 Users can open a pull request and close it to make further changes. The
 \"PR merged/rejected\" edge in the state machine diagram the only
 transition that is not started by the user.
 
-See [CitizenLab test list updater](#citizenlab-test-list-updater)<sub><sup> </sup></sub>⚙
+See [CitizenLab test list updater](#citizenlab-test-list-updater)&thinsp;⚙
 for a description of the data flow.
 
 [Sources](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/citizenlab.py)
 
+See [Metrics list](#metrics-list)&thinsp;💡 for application metrics.
+
+
 ## Prioritization management
 This part of the API is used by the OONI team to manage prioritization
-rules for URLs used by [Web connectivity test](#web-connectivity-test)<sub><sup> </sup></sub>Ⓣ. It lives
+rules for URLs used by [Web connectivity test](#web-connectivity-test)&thinsp;Ⓣ. It lives
 in the `citizenlab.py` module.
 
 The UI is at <https://test-lists.ooni.org/prioritization> and it is part
-of the [Test List Editor](#test-list-editor)<sub><sup> </sup></sub>🖱. It is available to accounts with
+of the [Test List Editor](#test-list-editor)&thinsp;🖱. It is available to accounts with
 `admin` role only.
 
-See [Prioritization](#prioritization)<sub><sup> </sup></sub>🐝 for the prioritization rules logic.
+See [Prioritization](#prioritization)&thinsp;🐝 for the prioritization rules logic.
 
 There are two entry points:
 
--   List URL priority rules
+ * List URL priority rules
     <https://api.ooni.io/apidocs/#/default/get_api___url_priorities_list>
 
--   Add/update/delete an URL priority rule
+ * Add/update/delete an URL priority rule
     <https://api.ooni.io/apidocs/#/default/post_api___url_priorities_update>
 
-The changes are immediately applied to the [url_priorities
-table](#tbl:url_priorities) and used by [Prioritization](#prioritization)<sub><sup> </sup></sub>🐝.
+The changes are immediately applied to the
+[url_priorities table](#tbl:url_priorities) and used by [Prioritization](#prioritization)&thinsp;🐝.
+
 
 # Public and private web UIs
+
 ## Explorer
 UI to display measurements and aggregated data to the users
 <https://explorer.ooni.org/>
 
-Fetches data from the [API](#api)<sub><sup> </sup></sub>⚙
+Fetches data from the [API](#api)&thinsp;⚙
+
 
 ## CitizenLab Test List
-A list of URLs for [Web connectivity test](#web-connectivity-test)<sub><sup> </sup></sub>Ⓣ managed by
+A list of URLs for [Web connectivity test](#web-connectivity-test)&thinsp;Ⓣ managed by
 the [CitizenLab project](https://citizenlab.ca/).
 
 The repository lives at <https://github.com/citizenlab/test-lists>
 
-It is fetched automatically by the [CitizenLab test list
-updater](#comp:citizenlab_test_lists_updater).
+It is fetched automatically by the
+[CitizenLab test list updater](#citizenlab-test-list-updater)&thinsp;⚙.
+
 
 ## Test List Editor
 UI to allow authenticated users to submit or edit URLs in the CitizenLab
@@ -1338,34 +1627,35 @@ Test List <https://test-lists.ooni.org/>
 
 Documented at <https://ooni.org/support/github-test-lists/>
 
-Fetches data from the [CitizenLab](#citizenlab)<sub><sup> </sup></sub>🐝 API.
+Fetches data from the [CitizenLab](#citizenlab)&thinsp;🐝 API.
+
 
 ## Prioritization rules UI
 UI for internal use to manage prioritization rules. It is available at
-<https://test-lists.ooni.org/prioritization> and it is part of the [Test
-List Editor](#ui:tle).
+<https://test-lists.ooni.org/prioritization> and it is part of the
+[Test List Editor](#test-list-editor)&thinsp;🖱.
 
-See [Prioritization management](#prioritization-management)<sub><sup> </sup></sub>🐝 for details.
+See [Prioritization management](#prioritization-management)&thinsp;🐝 for details.
+
 
 # Fastpath
 The fastpath is a data processing pipeline designed to process incoming
 measurements in real time.
 
 It also supports processing old measurements by fetching them from the
-[S3 data bucket](#s3-data-bucket)<sub><sup> </sup></sub>💡.
+[S3 data bucket](#s3-data-bucket)&thinsp;💡.
 
--   Generate scoring metadata and flag them as `confirmed`, `anomaly` as
+ * Generate scoring metadata and flag them as `confirmed`, `anomaly` as
     needed.
 
--   Detect invalid measurements (e.g. from the future) and flag them as
+ * Detect invalid measurements (e.g. from the future) and flag them as
     `failed`.
 
--   Extract metadata from measurements e.g. `engine_version`
+ * Extract metadata from measurements e.g. `engine_version`
 
--   Write scoring and metadata to the [fastpath table](#fastpath-table)<sub><sup> </sup></sub>⛁
+ * Write scoring and metadata to the [fastpath table](#fastpath-table)&thinsp;⛁
 
--   Extract OpenVPN observations into [obs_openvpn
-    table](#tbl:obs_openvpn)
+ * Extract OpenVPN observations into [obs_openvpn table](#obs_openvpn-table)&thinsp;⛁
 
 Data flow diagram:
 
@@ -1393,30 +1683,31 @@ image and then click on each shape to see related documentation.
 
 The fastpath has been designed around a set of goals:
 
--   Resiliency: the processing pipeline is lenient towards measurements
+ * Resiliency: the processing pipeline is lenient towards measurements
     with missing or incorrect fields to mitigate the impact of known and
     unknown bugs in the incoming measurements. Also it is designed to
     minimize the risk of crashing out, blocking or deadlocking.
-    Ancillary data sources e.g. [Fingerprint
-    updater](#comp:fingerprints_updater) have failure modes that do not
+    Ancillary data sources e.g.
+    [Fingerprint updater](#fingerprint-updater)&thinsp;⚙ have failure modes that do not
     block the fastpath.
 
--   Horizontal scalability: Measurement processing is stateless and
+ * Horizontal scalability: Measurement processing is stateless and
     supports lockless multiprocessing. Measurement collection, spooling
     and processing can scale horizontally on multiple hosts.
 
--   Security: measurements are received from a public API and treated as
+ * Security: measurements are received from a public API and treated as
     untrusted input. All backend components are built on a secure SBOM
     and are sandboxed using minimum privileges.
 
--   Maintainability: all data flows in one direction from the API
+ * Maintainability: all data flows in one direction from the API
     through a simple queue system to the database. The only information
     flowing in the opposite direction is backpressure to prevent
     stalling or unbounded RAM usage when the CPUs are saturated. The
     code style favors simplicity and readability over speed and feature
     richness.
 
--   Support unit, functional, end-to-end integration testing, CI/CD.
+ * Support unit, functional, end-to-end integration testing, CI/CD.
+
 
 ## Core logic
 Python module:
@@ -1424,52 +1715,51 @@ Python module:
 
 Implement the main logic:
 
--   Parse CLI options and configuration files and manage local
+ * Parse CLI options and configuration files and manage local
     directories.
 
--   Fetch and prepare HTTP and DNS fingerprints from the
-    [fingerprints_dns table](#fingerprints_dns-table)<sub><sup> </sup></sub>⛁ and
-    [fingerprints_http table](#fingerprints_http-table)<sub><sup> </sup></sub>⛁. See [Fingerprint
-    updater](#comp:fingerprints_updater).
+ * Fetch and prepare HTTP and DNS fingerprints from the
+    [fingerprints_dns table](#fingerprints_dns-table)&thinsp;⛁ and
+    [fingerprints_http table](#fingerprints_http-table)&thinsp;⛁. See
+    [Fingerprint updater](#fingerprint-updater)&thinsp;⚙.
 
--   Spawn a local HTTP server to receive fresh measurements from the
+ * Spawn a local HTTP server to receive fresh measurements from the
     API. See `localhttpfeeder.py`
 
--   Spawn and manage a worker pool to scale out horizontally on
+ * Spawn and manage a worker pool to scale out horizontally on
     available CPU cores.
 
--   Alternatively, feed measurements from the [S3 data
-    bucket](#topic:s3data).
+ * Alternatively, feed measurements from the [S3 data bucket](#s3-data-bucket)&thinsp;💡.
 
--   Process incoming measurements, see the `process_measurement`
+ * Process incoming measurements, see the `process_measurement`
     function.
 
--   Score each measurement individually, see the `score_measurement`
+ * Score each measurement individually, see the `score_measurement`
     function. The scoring functions e.g. `score_measurement_telegram`
     are meant to focus only on test-specific data, be stateless and
     unit-testable in isolation.
 
--   Generate anomaly, confirmed and failure flag consistently with
-    [Explorer](#explorer)<sub><sup> </sup></sub>🖱 and the batch pipeline used before.
+ * Generate anomaly, confirmed and failure flag consistently with
+    [Explorer](#explorer)&thinsp;🖱 and the batch pipeline used before.
 
--   Extract metadata and upsert each measurement into [fastpath
-    table](#tbl:fastpath) in `clickhouse_upsert_summary`
+ * Extract metadata and upsert each measurement into
+    [fastpath table](#fastpath-table)&thinsp;⛁ in `clickhouse_upsert_summary`
 
 The fastpath also supports buffering writes into large batches to avoid
 single-record insert queries in ClickHouse. This provides a 25x speedup
-when [Reprocessing measurements](#reprocessing-measurements)<sub><sup> </sup></sub>📒 from [S3 data
-bucket](#topic:s3data).
+when [Reprocessing measurements](#reprocessing-measurements)&thinsp;📒 from
+[S3 data bucket](#s3-data-bucket)&thinsp;💡.
 
 This is not meant to be used for real-time measurement scoring as it
 would create risk of losing multiple records in case of failed query,
 crash, etc and also increase latency.
 
 > **note**
-> Batching writes can also be implemented in ClickHouse using [Buffer
-> Table
-> Engine](https://clickhouse.com/docs/en/engines/table-engines/special/buffer)
-> or [async
-> insert](https://clickhouse.com/docs/en/optimize/asynchronous-inserts)
+> Batching writes can also be implemented in ClickHouse using
+> [Buffer Table Engine](https://clickhouse.com/docs/en/engines/table-engines/special/buffer)
+> or
+> [async insert](https://clickhouse.com/docs/en/optimize/asynchronous-inserts)
+
 
 ## Database module
 Python module:
@@ -1479,19 +1769,21 @@ Implements all the database-related functions. The rest of the codebase
 is database-agnostic.
 
 > **note**
-> Upserts are based on the MergeTree table engine, see [Overall
-> design](#topic:dbdesign).
+> Upserts are based on the MergeTree table engine, see
+> [Overall design](#overall-design)&thinsp;💡.
+
 
 ## S3 Feeder
 Python module:
 <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/fastpath/fastpath/s3feeder.py>
 
-Implements the fetching of measurements from [S3 data
-bucket](#topic:s3data). The rest of the codebase is agnostic of S3.
+Implements the fetching of measurements from
+[S3 data bucket](#s3-data-bucket)&thinsp;💡. The rest of the codebase is agnostic of S3.
 
 It supports new and legacy cans and JSON and YAML formats.
 
-See [Feed fastpath from JSONL](#feed-fastpath-from-jsonl)<sub><sup> </sup></sub>🐞
+See [Feed fastpath from JSONL](#feed-fastpath-from-jsonl)&thinsp;🐞
+
 
 ## YAML normalization
 Python module:
@@ -1500,32 +1792,34 @@ Python module:
 Transforms legacy measurement format in YAML into JSON. YAML form is
 legacy and not used for new measurements.
 
+
 # Test helpers
 Test helpers are hosts that provide the test helper `oohelperd` service
-to probes. They are deployed by [Test helper
-rotation](#comp:test_helper_rotation) and tracked in
-[test_helper_instances table](#test_helper_instances-table)<sub><sup> </sup></sub>⛁.
+to probes. They are deployed by
+[Test helper rotation](#test-helper-rotation)&thinsp;⚙ and tracked in
+[test_helper_instances table](#test_helper_instances-table)&thinsp;⛁.
 
-They have names and DNS entries `<number>.th.ooni.org`. See [Test helper
-rotation](#comp:test_helper_rotation) for details on the deployment
+They have names and DNS entries `<number>.th.ooni.org`. See
+[Test helper rotation](#test-helper-rotation)&thinsp;⚙ for details on the deployment
 process.
 
-Test helpers send metrics to [Prometheus](#prometheus)<sub><sup> </sup></sub>🔧 and send
-logs to [monitoring.ooni.org](#monitoring.ooni.org)<sub><sup> </sup></sub>🖥.
+Test helpers send metrics to [Prometheus](#prometheus)&thinsp;🔧 and send
+logs to [monitoring.ooni.org](#monitoring.ooni.org)&thinsp;🖥.
 
-See [Test helpers dashboard](#test-helpers-dashboard)<sub><sup> </sup></sub>📊 for metrics and
-alarming and [Test helpers failure runbook](#test-helpers-failure-runbook)<sub><sup> </sup></sub>📒 for
+See [Test helpers dashboard](#test-helpers-dashboard)&thinsp;📊 for metrics and
+alarming and [Test helpers failure runbook](#test-helpers-failure-runbook)&thinsp;📒 for
 troubleshooting.
 
 The address of the test helpers are provided to the probes by the API in
-[Test helpers list](#test-helpers-list)<sub><sup> </sup></sub>🐝.
+[Test helpers list](#test-helpers-list)&thinsp;🐝.
+
 
 ## Analysis
 Miscellaneous scripts, services and tools. It contains ancillary
 components that are not updated often and might not justify a dedicated
 Debian package for each of them.
 
-Deployed using the [analysis package](#analysis-package)<sub><sup> </sup></sub>📦
+Deployed using the [analysis package](#analysis-package)&thinsp;📦
 
 <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/>
 
@@ -1539,11 +1833,12 @@ each shape to see related documentation.
 
 See the following subchapters for details:
 
+
 ### CitizenLab test list updater
-This component fetches the test lists from [CitizenLab Test
-List](#topic:citizenlab) and populates the [citizenlab
-table](#tbl:citizenlab) and [citizenlab_flip
-table](#tbl:citizenlab_flip).
+This component fetches the test lists from
+[CitizenLab Test List](#citizenlab-test-list)&thinsp;💡 and populates the
+[citizenlab table](#citizenlab-table)&thinsp;⛁ and
+[citizenlab_flip table](#citizenlab_flip-table)&thinsp;⛁.
 
 ```mermaid
 
@@ -1569,31 +1864,24 @@ Database writes are performed as the `citizenlab` user.
 
 The tables have few constraints on the database side: most of the
 validation is done in the script and it is meant to be strict. The
-updater overwrites [citizenlab_flip table](#citizenlab_flip-table)<sub><sup> </sup></sub>⛁ and
-then swaps it with [citizenlab table](#citizenlab-table)<sub><sup> </sup></sub>⛁ atomically. In
+updater overwrites [citizenlab_flip table](#citizenlab_flip-table)&thinsp;⛁ and
+then swaps it with [citizenlab table](#citizenlab-table)&thinsp;⛁ atomically. In
 case of failure during git cloning, verification and table overwrite the
 final swap does not happen, leaving the `citizenlab` table unaltered.
 
-It is deployed using the [analysis package](#analysis-package)<sub><sup> </sup></sub>📦 and started
-by the [ooni-update-citizenlab](#ooni-update-citizenlab)<sub><sup> </sup></sub>⏲ Systemd timer.
+It is deployed using the [analysis package](#analysis-package)&thinsp;📦 and started
+by the [ooni-update-citizenlab](#ooni-update-citizenlab)&thinsp;⏲ Systemd timer.
 
 Logs are generated as the `analysis.citizenlab_test_lists_updater` unit.
 
 Also it generates the following metrics with the
 `citizenlab_test_lists_updater` prefix:
 
-+----------------------+----------------------+-----------------------+
-| Metric name          | Type                 | Description           |
-+======================+======================+=======================+
-| `fetc                | timer                | Fetch duration        |
-| h_citizen_lab_lists` |                      |                       |
-+----------------------+----------------------+-----------------------+
-| `upda                | timer                | Update duration       |
-| te_citizenlab_table` |                      |                       |
-+----------------------+----------------------+-----------------------+
-| `citiz               | gauge                | Table size            |
-| enlab_test_list_len` |                      |                       |
-+----------------------+----------------------+-----------------------+
+| Metric name | Type | Description |
+| -------- | ------- | ------ |
+| `fetch_citizen_lab_lists` | timer | Fetch duration |
+| `update_citizenlab_table` | timer | Update duration |
+| `citizenlab_test_list_len` | gauge | Table size |
 
 The updater lives in one file:
 <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/analysis/citizenlab_test_lists_updater.py>
@@ -1602,15 +1890,16 @@ To run the updater manually during development:
 
     PYTHONPATH=analysis ./run_analysis --update-citizenlab --dry-run --stdout
 
+
 ### Fingerprint updater
 This component fetches measurement fingerprints as CSV files from
 <https://github.com/ooni/blocking-fingerprints> and populates
-[fingerprints_dns table](#fingerprints_dns-table)<sub><sup> </sup></sub>⛁, [fingerprints_dns_tmp
-table](#tbl:fingerprints_dns_tmp), [fingerprints_http
-table](#tbl:fingerprints_http) and [fingerprints_http_tmp
-table](#tbl:fingerprints_http_tmp).
+[fingerprints_dns table](#fingerprints_dns-table)&thinsp;⛁,
+[fingerprints_dns_tmp table](#fingerprints_dns_tmp-table)&thinsp;⛁,
+[fingerprints_http table](#fingerprints_http-table)&thinsp;⛁ and
+[fingerprints_http_tmp table](#fingerprints_http_tmp-table)&thinsp;⛁.
 
-The tables without `_tmp` are used by the [Fastpath](#fastpath)<sub><sup> </sup></sub>⚙.
+The tables without `_tmp` are used by the [Fastpath](#fastpath)&thinsp;⚙.
 
 The CSV files are fetched directly without git-cloning.
 
@@ -1625,30 +1914,22 @@ The updater overwrites the tables ending with `_tmp` and then swaps them
 with the \"real\" tables atomically. In case of failure the final swap
 does not happen, leaving the \"real\" tables unaltered.
 
-It is deployed using the [analysis package](#analysis-package)<sub><sup> </sup></sub>📦 and started
-by the [ooni-update-citizenlab](#ooni-update-citizenlab)<sub><sup> </sup></sub>⏲ Systemd timer.
+It is deployed using the [analysis package](#analysis-package)&thinsp;📦 and started
+by the [ooni-update-citizenlab](#ooni-update-citizenlab)&thinsp;⏲ Systemd timer.
 
 Logs are generated as the `analysis.fingerprints_updater` unit.
 
 Also it generates the following metrics with the `fingerprints_updater`
 prefix:
 
-+----------------------+----------------------+-----------------------+
-| Metric name          | Type                 | Description           |
-+======================+======================+=======================+
-| `fetch_csv`          | timer                | CSV fetch duration    |
-+----------------------+----------------------+-----------------------+
-| `fingerpri           | gauge                | Update progress       |
-| nts_update_progress` |                      |                       |
-+----------------------+----------------------+-----------------------+
-| `finge               | gauge                | DNS table size        |
-| rprints_dns_tmp_len` |                      |                       |
-+----------------------+----------------------+-----------------------+
-| `finger              | gauge                | HTTP table size       |
-| prints_http_tmp_len` |                      |                       |
-+----------------------+----------------------+-----------------------+
+| Metric name | Type | Description |
+| -------- | ------- | ------ |
+| `fetch_csv` | timer | CSV fetch duration |
+| `fingerprints_update_progress` | gauge | Update progress |
+| `fingerprints_dns_tmp_len` | gauge | DNS table size |
+| `fingerprints_http_tmp_len` | gauge | HTTP table size |
 
-See the [Fingerprint updater dashboard](#fingerprint-updater-dashboard)<sub><sup> </sup></sub>📊 on Grafana.
+See the [Fingerprint updater dashboard](#fingerprint-updater-dashboard)&thinsp;📊 on Grafana.
 
 The updater lives primarily in
 <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/analysis/fingerprints_updater.py>
@@ -1658,15 +1939,16 @@ To run the updater manually during development:
 
     PYTHONPATH=analysis ./run_analysis --update-citizenlab --dry-run --stdout
 
+
 ### ASN metadata updater
 This component fetches ASN metadata from
 <https://archive.org/download/ip2country-as> (generated via:
 <https://github.com/ooni/historical-geoip>)
 
-It populates the [asnmeta table](#asnmeta-table)<sub><sup> </sup></sub>⛁ and [asnmeta_tmp
-table](#tbl:asnmeta_tmp).
+It populates the [asnmeta table](#asnmeta-table)&thinsp;⛁ and
+[asnmeta_tmp table](#asnmeta_tmp-table)&thinsp;⛁.
 
-[asnmeta table](#tbl:asnmeta) is used by the private [API](#api)<sub><sup> </sup></sub>⚙,
+[asnmeta table](#tbl:asnmeta) is used by the private [API](#api)&thinsp;⚙,
 see:
 <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/private.py#L923>
 and <https://api.ooni.io/apidocs/#/default/get_api___asnmeta>
@@ -1683,28 +1965,24 @@ Logs are generated as the `analysis.asnmeta_updater` unit.
 Also it generates the following metrics with the `asnmeta_updater`
 prefix:
 
-+----------------------+----------------------+-----------------------+
-| Metric name          | Type                 | Description           |
-+======================+======================+=======================+
-| `fetch_data`         | timer                | Data fetch duration   |
-+----------------------+----------------------+-----------------------+
-| `asnm                | gauge                | Update progress       |
-| eta_update_progress` |                      |                       |
-+----------------------+----------------------+-----------------------+
-| `asnmeta_tmp_len`    | gauge                | table size            |
-+----------------------+----------------------+-----------------------+
+| Metric name | Type | Description |
+| -------- | ------- | ------ |
+| `fetch_data` | timer | Data fetch duration |
+| `asnmeta_update_progress` | gauge | Update progress |
+| `asnmeta_tmp_len` | gauge | table size |
 
-See the [ASN metadata updater dashboard](#asn-metadata-updater-dashboard)<sub><sup> </sup></sub>📊 on
+See the [ASN metadata updater dashboard](#asn-metadata-updater-dashboard)&thinsp;📊 on
 Grafana.
 
 To run the updater manually during development:
 
     PYTHONPATH=analysis ./run_analysis --update-asnmeta --stdout
 
+
 ### GeoIP downloader
-Fetches GeoIP databases, installed by the [ooni-api](#api)<sub><sup> </sup></sub>⚙. Started
-by the [ooni-download-geoip timer](#ooni-download-geoip-timer)<sub><sup> </sup></sub>⏲ on
-[backend-fsn.ooni.org](#backend-fsn.ooni.org)<sub><sup> </sup></sub>🖥, see.
+Fetches GeoIP databases, installed by the [ooni-api](#api)&thinsp;⚙. Started
+by the [ooni-download-geoip timer](#ooni-download-geoip-timer)&thinsp;⏲ on
+[backend-fsn.ooni.org](#backend-fsn.ooni.org)&thinsp;🖥, see.
 
 Lives at
 <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/>
@@ -1712,30 +1990,31 @@ Lives at
 
 Updates `asn.mmdb` and `cc.mmdb` in `/var/lib/ooniapi/`
 
-Can be monitored with the [GeoIP MMDB database dashboard](#geoip-mmdb-database-dashboard)<sub><sup> </sup></sub>📊
+Can be monitored with the [GeoIP MMDB database dashboard](#geoip-mmdb-database-dashboard)&thinsp;📊
 and by running:
 
     sudo journalctl --identifier ooni_download_geoip
 
+
 ### Database backup tool
 The backup tool is a service that regularly backs up
-[ClickHouse](#clickhouse)<sub><sup> </sup></sub>⚙ tables to S3. It also exports tables in
+[ClickHouse](#clickhouse)&thinsp;⚙ tables to S3. It also exports tables in
 `CSV.zstd` format for public consumption.
 
 Contrarily to similar tools, it is designed to:
 
--   extract data in chunks and upload it without creating temporary
+ * extract data in chunks and upload it without creating temporary
     files
 
--   without requiring transaction support in the database (not available
+ * without requiring transaction support in the database (not available
     in ClickHouse)
 
--   without requiring transactional filesystems or interrupting the
+ * without requiring transactional filesystems or interrupting the
     database workload
 
-It is configured by [Ansible](#ansible)<sub><sup> </sup></sub>🔧 using the
+It is configured by [Ansible](#ansible)&thinsp;🔧 using the
 `/etc/ooni/db-backup.conf` file. Runs as a SystemD service, see
-[ooni-db-backup timer](#ooni-db-backup-timer)<sub><sup> </sup></sub>⏲
+[ooni-db-backup timer](#ooni-db-backup-timer)&thinsp;⏲
 
 It compresses data using <https://facebook.github.io/zstd/> during the
 upload.
@@ -1747,18 +2026,15 @@ Logs are generated as the `ooni-db-backup` unit.
 
 Also it generates the following metrics with the `db-backup` prefix:
 
-+----------------------+----------------------+-----------------------+
-| Metric name          | Type                 | Description           |
-+======================+======================+=======================+
-| `upload_to_s3`       | timer                | Data upload duration  |
-+----------------------+----------------------+-----------------------+
-| `run_export`         | timer                | Data export duration  |
-+----------------------+----------------------+-----------------------+
-| `table_{tbln         | timer                | Table backup time     |
-| ame}_backup_time_ms` |                      | (multiple metrics)    |
-+----------------------+----------------------+-----------------------+
+| Metric name | Type | Description |
+| -------- | ------- | ------ |
+| `upload_to_s3` | timer | Data upload duration |
+| `run_export` | timer | Data export duration |
+| `table_{tblname}_backup_time_ms` | timer | Table backup time |
 
-See the [Database backup dashboard](#database-backup-dashboard)<sub><sup> </sup></sub>📊 on Grafana.
+See the [Database backup dashboard](#database-backup-dashboard)&thinsp;📊 on Grafana and
+[Metrics list](#metrics-list)&thinsp;💡 for application metrics.
+
 
 Monitor with:
 
@@ -1766,14 +2042,13 @@ Monitor with:
 
 Future improvements:
 
--   [private/public backups](https://github.com/ooni/backend/issues/766)
+ * [private/public backups](https://github.com/ooni/backend/issues/766)
 
--   [safer table backup
-    workflow](https://github.com/ooni/backend/issues/767)
+ * [safer table backup workflow](https://github.com/ooni/backend/issues/767)
 
--   [database schema
-    backup](https://github.com/ooni/backend/issues/765). For extracting
-    the schema see [Database schema check](#database-schema-check)<sub><sup> </sup></sub>💡
+ * [database schema backup](https://github.com/ooni/backend/issues/765).
+   For extracting the schema see [Database schema check](#database-schema-check)&thinsp;💡
+
 
 ### Ancillary modules
 `analysis/analysis/analysis.py` is the main analysis script and acts as
@@ -1782,14 +2057,16 @@ a wrapper to other components.
 `analysis/analysis/metrics.py` is a tiny wrapper for the Statsd Python
 library.
 
+
 ## Social media blocking event detector
 Blocking event detector currently under development. Documented in
 <https://docs.google.com/document/d/1WQ6_ybnPbO_W6Tq-xKuHQslG1dSPr4jUbZ3jQLaMqdw/edit>
 
-Deployed by the [detector package](#detector-package)<sub><sup> </sup></sub>📦.
+Deployed by the [detector package](#detector-package)&thinsp;📦.
 
-See [Monitor blocking event detections notebook](#monitor-blocking-event-detections-notebook)<sub><sup> </sup></sub>📔 [Event
-detector dashboard](#dash:detector) [Detector timer](#detector-timer)<sub><sup> </sup></sub>⏲
+See [Monitor blocking event detections notebook](#monitor-blocking-event-detections-notebook)&thinsp;📔
+[Event detector dashboard](#dash:detector) [Detector timer](#detector-timer)&thinsp;⏲
+
 
 ## OONI bridges
 OONI bridges are a new design for handling the connectivity between
@@ -1797,37 +2074,35 @@ Probes and the backend components.
 
 The provide a set of benefits compared to the previous architecture:
 
--   Circumvention: the entry point for the API accepts all FDQN allowing
+ * Circumvention: the entry point for the API accepts all FDQN allowing
     mitigation for DPI-based blocking.
 
--   Circumvention 2: bridges are designed to be deployed on both
+ * Circumvention 2: bridges are designed to be deployed on both
     publicly known and \"static\" IP addresses as well as ephemeral,
     less visible addresses and/or lesser known hosting providers.
 
-    -   Bridges are stateless and could be deployed by [Test helper
-        rotation](#comp:test_helper_rotation).
+    -   Bridges are stateless and could be deployed by
+        [Test helper rotation](#test-helper-rotation)&thinsp;⚙.
 
     -   Test helper VMs can run HaProxy and be used as bridges without
         impacting their ability to run test helpers as well.
 
--   Faster connectivity: probes use the same HTTPS connection to a
+ * Faster connectivity: probes use the same HTTPS connection to a
     bridge for both traffic to the API and to the test helper.
 
--   Resiliency: Test helpers are load-balanced using stateful
+ * Resiliency: Test helpers are load-balanced using stateful
     connections. Anything affecting the test helpers is not going to
     impact the Probes, including: test helper rotation, CPU overload,
     network weather or datacenter outages.
 
-The current configuration is based on [HaProxy](#haproxy)<sub><sup> </sup></sub>⚙ being run
-as a load balancer in front of [Test helpers](#test-helpers)<sub><sup> </sup></sub>⚙ and
-the previously configured [Nginx](#nginx)<sub><sup> </sup></sub>⚙ instance.
+The current configuration is based on [HaProxy](#haproxy)&thinsp;⚙ being run
+as a load balancer in front of [Test helpers](#test-helpers)&thinsp;⚙ and
+the previously configured [Nginx](#nginx)&thinsp;⚙ instance.
 
 The configuration is stored in
 <https://github.com/ooni/sysadmin/blob/master/ansible/roles/ooni-backend/templates/haproxy.cfg>
 
 The following diagram shows the load balancing topology:
-
-TODO add bridges diagram?
 
 In the diagram caching for the API and proxying for various services is
 still done by Nginx for legacy reasons but can be moved to HaProxy to
@@ -1835,23 +2110,24 @@ simplify configuration management and troubleshooting.
 
 Bridges are deployed as:
 
--   [ams-pg-test.ooni.org](#ams-pg-test.ooni.org)<sub><sup> </sup></sub>🖥
+ * [ams-pg-test.ooni.org](#ams-pg-test.ooni.org)&thinsp;🖥
     <https://ams-pg-test.ooni.org:444/__haproxy_stats>
 
--   [backend-hel.ooni.org](#backend-hel.ooni.org)<sub><sup> </sup></sub>🖥
+ * [backend-hel.ooni.org](#backend-hel.ooni.org)&thinsp;🖥
     <https://backend-hel.ooni.org:444/__haproxy_stats>
 
--   [bridge-greenhost.ooni.org](#bridge-greenhost.ooni.org)<sub><sup> </sup></sub>🖥
+ * [bridge-greenhost.ooni.org](#bridge-greenhost.ooni.org)&thinsp;🖥
     <https://bridge-greenhost.ooni.org:444/__haproxy_stats>
+
 
 ## Test helper rotation
 The test helper rotation script is responsible for spawning and
-deploying VMs on Digital Ocean to be used as [Test
-helpers](#comp:test_helpers).
+deploying VMs on Digital Ocean to be used as
+[Test helpers](#test-helpers)&thinsp;⚙.
 
 The main goals for this architecture are:
 
--   Incremental rollout: the deployment of a new version of the test
+ * Incremental rollout: the deployment of a new version of the test
     helper (`oohelperd`) is performed incrementally over 4 weeks without
     requiring manual intervention. This allow detecting changes in:
 
@@ -1860,42 +2136,42 @@ The main goals for this architecture are:
 
     -   Test execution time, CPU and memory usage.
 
--   Resiliency: traffic between probes and test helpers could be blocked
+ * Resiliency: traffic between probes and test helpers could be blocked
     by 3rd parties. The rotation system mitigates this risk by cycling
     countries, datacenters and IP addresses across a very large pool.
     The tool is designed to allow future extensions to support other
     hosting providers in order to increase the address pool.
 
--   Trust: test helpers could be treated differently than other hosts by
+ * Trust: test helpers could be treated differently than other hosts by
     censors e.g. allowing test helpers to reach websites otherwise
     blocked. By rotating test helpers this risk is also mitigated.
 
--   Failure resolution: in case of failure of a test helper due to
+ * Failure resolution: in case of failure of a test helper due to
     crash, hardware or network issues, DoS etc. the impacted host can be
     replaced within 5 minutes.
 
--   Future extension: The ability to rotate country / datacenter / IP
-    address can also be used for [OONI bridges](#ooni-bridges)<sub><sup> </sup></sub>⚙ in
+ * Future extension: The ability to rotate country / datacenter / IP
+    address can also be used for [OONI bridges](#ooni-bridges)&thinsp;⚙ in
     future.
 
 The primary functions are:
 
--   Select datacenters and spawn VMs. This allows having helpers to live
+ * Select datacenters and spawn VMs. This allows having helpers to live
     in many countries, datacenters and subnets making attempts at
     blocking them more difficult.
 
--   Runs a setup script on the host at first boot
+ * Runs a setup script on the host at first boot
 
--   Keeps a list of live and old hosts in a dedicated database table
+ * Keeps a list of live and old hosts in a dedicated database table
 
--   Create SSL certificates using the Digital Ocean API
+ * Create SSL certificates using the Digital Ocean API
 
--   Performs end-to-end test on newly created VMs to ensure the test
+ * Performs end-to-end test on newly created VMs to ensure the test
     helper service is running
 
--   Update DNS to publish new services
+ * Update DNS to publish new services
 
--   Drain and destroy old VMs
+ * Drain and destroy old VMs
 
 A summary of the sequence to deploy, drain and destroy a test helper VM:
 
@@ -1929,52 +2205,53 @@ generous draining period and destroys old VMs after a week.
 
 It is designed to be extended:
 
--   Support multiple cloud services. The database tables already contain
+ * Support multiple cloud services. The database tables already contain
     columns to track VMs on different cloud providers.
 
--   Support deploying [OONI bridges](#ooni-bridges)<sub><sup> </sup></sub>⚙. This can
+ * Support deploying [OONI bridges](#ooni-bridges)&thinsp;⚙. This can
     provide frequently changing \"entry point\" IP addresses for probes.
 
-The script is deployed on [backend-fsn.ooni.org](#backend-fsn.ooni.org)<sub><sup> </sup></sub>🖥 using the
-[analysis deb package](#analysis-package)<sub><sup> </sup></sub>📦
+The script is deployed on [backend-fsn.ooni.org](#backend-fsn.ooni.org)&thinsp;🖥 using the
+[analysis deb package](#analysis-package)&thinsp;📦
 
-The configuration is deployed using [Ansible](#ansible)<sub><sup> </sup></sub>🔧:
+The configuration is deployed using [Ansible](#ansible)&thinsp;🔧:
 
--   `/etc/ooni/rotation.conf`: main configuration file deployed using
+ * `/etc/ooni/rotation.conf`: main configuration file deployed using
     <https://github.com/ooni/sysadmin/blob/master/ansible/roles/ooni-backend/tasks/main.yml>
 
--   `/etc/ooni/rotation_setup.sh`: this script is executed on the VMs
+ * `/etc/ooni/rotation_setup.sh`: this script is executed on the VMs
     for configuration, see
     <https://github.com/ooni/sysadmin/blob/master/ansible/roles/ooni-backend/templates/rotation_nginx_conf>
 
--   `/etc/ooni/rotation_nginx_conf`: configuration for Nginx to be
+ * `/etc/ooni/rotation_nginx_conf`: configuration for Nginx to be
     deployed on the VMs, see
     <https://github.com/ooni/sysadmin/blob/master/ansible/roles/ooni-backend/templates/rotation_setup.sh>
 
 Test helpers are named `<number>.th.ooni.org`. This is required to
 generate `*.th.ooni.org` certificates.
 
-To troubleshoot rotation see [Test helper rotation
-runbook](#run:test_helper_rotation)
+To troubleshoot rotation see
+the [test helper rotation runbook](#test-helper-rotation-runbook)&thinsp;📒
+
 
 ### Internals
 The tool reads /etc/ooni/rotation.conf
 
 It uses the following APIs:
 
--   Digital Ocean API: DNS A/AAAA records
+ * Digital Ocean API: DNS A/AAAA records
 
--   Digital Ocean API: Live droplets
+ * Digital Ocean API: Live droplets
 
 Other stateful data exists only in:
 
--   test_helper_instances database table
+ * test_helper_instances database table
 
--   \"Let's Encrypt\" SSL certificates for `*.th.ooni.org` temporarily
+ * \"Let's Encrypt\" SSL certificates for `*.th.ooni.org` temporarily
     stored on local host and pushed to the test helpers
 
-For the database table setup see [test_helper_instances
-table](#tbl:test_helper_instances).
+For the database table setup see
+[test_helper_instances table](#test_helper_instances-table)&thinsp;⛁.
 
 Example of /etc/ooni/rotation.conf
 
@@ -2001,7 +2278,7 @@ Simple example for /etc/ooni/rotation_setup.sh:
     apt-get install -qy oohelperd
     apt-get install -qy oohelperd nginx-light
 
-It is activated by the [ooni-rotation timer](#ooni-rotation-timer)<sub><sup> </sup></sub>⏲ Systemd
+It is activated by the [ooni-rotation timer](#ooni-rotation-timer)&thinsp;⏲ Systemd
 timer Generates metrix prefixed as `rotation` and logs as a journald
 unit named `rotation`.
 
@@ -2015,8 +2292,10 @@ Related files in the backend repository:
 > like Namecheap, however it has the ability to spawn VMs and control
 > Digital Ocean's DNS.
 
+
 # Infrastructure
 This part describes tools used to manage the infrastructure.
+
 
 ## Hosts
 This section provides a summary of the backend hosts described in the
@@ -2024,51 +2303,58 @@ rest of the document.
 
 A full list is available at
 <https://github.com/ooni/sysadmin/blob/master/ansible/inventory.yml> -
-also see [Ansible](#ansible)<sub><sup> </sup></sub>🔧
+also see [Ansible](#ansible)&thinsp;🔧
+
 
 ### backend-fsn.ooni.org
 Public-facing production backend host, receiving the deployment of the
 packages:
 
--   [ooni-api](#ooni-api-package)<sub><sup> </sup></sub>📦
+ * [ooni-api](#ooni-api-package)&thinsp;📦
 
--   [fastpath](#fastpath-package)<sub><sup> </sup></sub>📦
+ * [fastpath](#fastpath-package)&thinsp;📦
 
--   [analysis](#analysis-package)<sub><sup> </sup></sub>📦
+ * [analysis](#analysis-package)&thinsp;📦
 
--   [detector](#detector-package)<sub><sup> </sup></sub>📦
+ * [detector](#detector-package)&thinsp;📦
+
 
 ### backend-hel.ooni.org
 Standby / pre-production backend host. Runs the same software stack as
-[backend-fsn.ooni.org](#backend-fsn.ooni.org)<sub><sup> </sup></sub>🖥, plus the [OONI
-bridges](#comp:ooni_bridges)
+[backend-fsn.ooni.org](#backend-fsn.ooni.org)&thinsp;🖥, plus the
+[OONI bridges](#ooni-bridges)&thinsp;⚙
+
 
 ### bridge-greenhost.ooni.org
-Runs a [OONI bridges](#ooni-bridges)<sub><sup> </sup></sub>⚙ in front of the production API
-and production [Test helpers](#test-helpers)<sub><sup> </sup></sub>⚙.
+Runs a [OONI bridges](#ooni-bridges)&thinsp;⚙ in front of the production API
+and production [Test helpers](#test-helpers)&thinsp;⚙.
+
 
 ### ams-pg-test.ooni.org
 Testbed backend host. Runs the same software stack as
-[backend-fsn.ooni.org](#backend-fsn.ooni.org)<sub><sup> </sup></sub>🖥. Database tables are not backed up and
+[backend-fsn.ooni.org](#backend-fsn.ooni.org)&thinsp;🖥. Database tables are not backed up and
 incoming measurements are not uploaded to S3. All data is considered
 ephemeral.
 
+
 ### monitoring.ooni.org
-Runs the internal monitoring stack, including [Jupyter
-Notebook](#tool:jupyter), [Prometheus](#prometheus)<sub><sup> </sup></sub>🔧,
-[Vector](#vector)<sub><sup> </sup></sub>🔧 and [ClickHouse instance for
-logs](#comp:click_log)
+Runs the internal monitoring stack, including
+[Jupyter Notebook](#tool:jupyter), [Prometheus](#prometheus)&thinsp;🔧,
+[Vector](#vector)&thinsp;🔧 and
+[ClickHouse instance for logs](#clickhouse-instance-for-logs)&thinsp;⚙
+
 
 ## The Sysadmin repository
 This is a git repository living at <https://github.com/ooni/sysadmin/>
 for internal use. It primarily contains:
 
--   Playbooks for [Ansible](#ansible)<sub><sup> </sup></sub>🔧
+ * Playbooks for [Ansible](#ansible)&thinsp;🔧
 
--   The [debops-ci tool](#debops-ci-tool)<sub><sup> </sup></sub>🔧
+ * The [debops-ci tool](#debops-ci-tool)&thinsp;🔧
 
--   Scripts and tools including diagrams for [DNS and
-    Domains](#topic:dns)
+ * Scripts and tools including diagrams for
+    [DNS and Domains](#dns-and-domains)&thinsp;💡
+
 
 ## Ansible
 Ansible is used to configure the OSes on the backend hosts and manage
@@ -2077,6 +2363,7 @@ the configuration of backend components. The playbooks are kept at
 
 This manual supersedes
 <https://github.com/ooni/sysadmin/blob/master/README.md>
+
 
 ### Installation and setup
 Install Ansible using a OS packages or a Python virtualenv. Ensure the
@@ -2097,6 +2384,7 @@ copy of the vault password encrypted with your PGP key. This file should
 be stored inside of `~/.ssh/ooni-sysadmin.vaultpw.gpg`.
 
 <https://github.com/ooni/sysadmin/blob/master/ansible/roles/base-bookworm/meta/main.yml>
+
 
 ### SSH Configuration
 You should configure your `~/.ssh/config` with the following:
@@ -2127,6 +2415,7 @@ On MacOS you may want to also add:
 
 To use the Keychain to store passwords.
 
+
 ## Ansible playbooks summary
 Usage:
 
@@ -2141,7 +2430,7 @@ Usage:
 > again the applied changes.
 
 > **note**
-> [Etckeeper](#etckeeper)<sub><sup> </sup></sub>🔧 can be useful to verify configuration
+> [Etckeeper](#etckeeper)&thinsp;🔧 can be useful to verify configuration
 > changes from a different point of view.
 
 Some notable parts of the repository:
@@ -2165,6 +2454,7 @@ create small files to open a port each and keep the configuration as
 close as possible to the ansible step that deploys a service. For
 example:
 <https://github.com/ooni/sysadmin/blob/master/ansible/roles/base-bookworm/tasks/main.yml#L110>
+
 
 ### Roles layout
 Ansible playbooks use multiple roles (see
@@ -2225,31 +2515,62 @@ flowchart LR
 ```
 
 
+## Creating new playbooks runbook
+This runbook describe how to add new runbooks or modify existing runbooks to support new hosts.
+
+When adding a new host to an existing group, if no customization is required it is enough to modify `inventory.yml`
+and insert the hostname in the same locations as its peers.
+
+If the host requires small customization e.g. a different configuration file for the <<comp:api>>:
+
+1. add the hostname to `inventory.yml` as described above
+2. create "custom" blocks in `tasks/main.yml` to adapt the deployment steps to the new host using the `when:` syntax.
+
+For an example see: <https://github.com/ooni/sysadmin/blob/adb22576791baae046827c79e99b71fc825caae0/ansible/roles/ooni-backend/tasks/main.yml#L65>
+
+NOTE: Complex `when:` rules can lower the readability of `main.yml`
+
+When adding a new type of backend component that is different from anything already existing a new dedicated role can be created:
+
+1. add the hostname to `inventory.yml` as described above
+2. create a new playbook e.g. `ansible/deploy-newcomponent.yml`
+3. copy files from an existing role into a new `ansible/roles/newcomponent` directory:
+  * `ansible/roles/newcomponent/meta/main.yml`
+  * `ansible/roles/newcomponent/tasks/main.yml`
+  * `ansible/roles/newcomponent/templates/example_config_file`
+4. run `./play deploy-newcomponent.yml -l newhost.ooni.org --diff -C` and review the output
+5. run `./play deploy-newcomponent.yml -l newhost.ooni.org --diff` and review the output
+
+Example: <https://github.com/ooni/sysadmin/commit/50271b9f5a8fd96dad5531c01fcfdd08bac98fe9>
+
+TIP: To ensure playbooks are robust and idemponent it can be beneficial to develop and test tasks incrementally by running the deployment commands often.
+
+
 ### Monitoring deployment runbook
 The monitoring stack is deployed and configured by
-[Ansible](#tool:ansible) on the [monitoring.ooni.org](#monitoring.ooni.org)<sub><sup> </sup></sub>🖥
+[Ansible](#tool:ansible) on the [monitoring.ooni.org](#monitoring.ooni.org)&thinsp;🖥
 host using the following playbook:
 <https://github.com/ooni/sysadmin/blob/master/ansible/deploy-monitoring.yml>
 
 It includes:
 
--   [Grafana](#grafana)<sub><sup> </sup></sub>🔧 at <https://grafana.ooni.org>
+ * [Grafana](#grafana)&thinsp;🔧 at <https://grafana.ooni.org>
 
--   [Jupyter Notebook](#jupyter-notebook)<sub><sup> </sup></sub>🔧 at <https://jupyter.ooni.org>
+ * [Jupyter Notebook](#jupyter-notebook)&thinsp;🔧 at <https://jupyter.ooni.org>
 
--   [Vector](#tool:vector) (see [Log management](#log-management)<sub><sup> </sup></sub>💡)
+ * [Vector](#tool:vector) (see [Log management](#log-management)&thinsp;💡)
 
--   local [Netdata](#netdata)<sub><sup> </sup></sub>🔧, Blackbox exporter etc.
+ * local [Netdata](#netdata)&thinsp;🔧, Blackbox exporter etc.
 
--   [Prometheus](#prometheus)<sub><sup> </sup></sub>🔧 at <https://prometheus.ooni.org>
+ * [Prometheus](#prometheus)&thinsp;🔧 at <https://prometheus.ooni.org>
 
 It also configures the FQDNs:
 
--   loghost.ooni.org
+ * loghost.ooni.org
 
--   monitoring.ooni.org
+ * monitoring.ooni.org
 
--   netdata.ooni.org
+ * netdata.ooni.org
 
 This also includes the credentials to access the Web UIs. They are
 deployed as `/etc/nginx/monitoring.htpasswd` from
@@ -2257,8 +2578,8 @@ deployed as `/etc/nginx/monitoring.htpasswd` from
 
 Steps:
 
-1.  Review [Ansible playbooks summary](#ansible-playbooks-summary)<sub><sup> </sup></sub>📒, [Deploying a new
-    host](#run:newhost) [Grafana dashboards](#grafana-dashboards)<sub><sup> </sup></sub>💡.
+1.  Review [Ansible playbooks summary](#ansible-playbooks-summary)&thinsp;📒,
+    [Deploying a new host](#run:newhost) [Grafana dashboards](#grafana-dashboards)&thinsp;💡.
 
 2.  Run `./play deploy-monitoring.yml -l monitoring.ooni.org --diff -C`
     and review the output
@@ -2266,11 +2587,13 @@ Steps:
 3.  Run `./play deploy-monitoring.yml -l monitoring.ooni.org --diff` and
     review the output
 
+
 ## Etckeeper
 Etckeeper <https://etckeeper.branchable.com/> is deployed on backend
 hosts and keeps the `/etc` directory under git version control. It
 commits automatically on package deployment and on timed runs. It also
 allows doing commits manually.
+
 
 ## Team credential repository
 A private repository <https://github.com/ooni/private> contains team
@@ -2288,9 +2611,11 @@ credentials, including username/password tuples, GPG keys and more.
 
 The tool checks JSON syntax and sorts keys automatically.
 
+
 ### Listing file contents
     git pull
     make show
+
 
 ### Editing contents
     git pull
@@ -2298,13 +2623,15 @@ The tool checks JSON syntax and sorts keys automatically.
     git commit credentials.json.gpg -m "<message>"
     git push
 
+
 ### Extracting a credential programmatically:
     git pull
     ./extract 'grafana.username'
 
 > **note**
 > this can be used to automate credential retrieval from other tools, e.g.
-> [Ansible](#ansible)<sub><sup> </sup></sub>🔧
+> [Ansible](#ansible)&thinsp;🔧
+
 
 ### Updating users allowed to decrypt the credentials file
 Edit `makefile` to add or remove recipients (see `--recipient`)
@@ -2316,17 +2643,18 @@ Then run:
     git commit makefile credentials.json.gpg
     git push
 
+
 ## Deploying a new host
 To deploy a new host:
 
-1.  Choose a FQDN like \$name.ooni.org based on the [DNS naming
-    policy](#topic:dnspol)
+1.  Choose a FQDN like \$name.ooni.org based on the
+    [DNS naming policy](#dns-naming-policy)&thinsp;💡
 
 2.  Deploy the physical host or VM using Debian Stable
 
 3.  Create `A` and `AAAA` records for the FQDN in the Namecheap web UI
 
-4.  Follow [Updating DNS diagrams](#updating-dns-diagrams)<sub><sup> </sup></sub>📒
+4.  Follow [Updating DNS diagrams](#updating-dns-diagrams)&thinsp;📒
 
 5.  Review the `inventory.yml` file and git-commit it
 
@@ -2336,22 +2664,24 @@ To deploy a new host:
         ./play deploy-backend.yml --diff -l <name>.ooni.org -C
         ./play deploy-backend.yml --diff -l <name>.ooni.org
 
-7.  Update [Prometheus](#prometheus)<sub><sup> </sup></sub>🔧 by following [Monitoring
-    deployment runbook](#run:deploy_monitoring)
+7.  Update [Prometheus](#prometheus)&thinsp;🔧 by following
+    [Monitoring deployment runbook](#monitoring-deployment-runbook)&thinsp;📒
 
 8.  git-push the commits
 
-Also see [Monitoring deployment runbook](#monitoring-deployment-runbook)<sub><sup> </sup></sub>📒 for an
+Also see [Monitoring deployment runbook](#monitoring-deployment-runbook)&thinsp;📒 for an
 example of deployment.
+
 
 # DNS and Domains
 The primary domains used by the backend are:
 
--   ooni.org
+ * ooni.org
 
--   ooni.io
+ * ooni.io
 
--   ooni.nu
+ * ooni.nu
+
 
 ## DNS naming policy
 Public-facing HTTPS services are named `<service>.ooni.org` or
@@ -2367,36 +2697,45 @@ can provide one or more public-facing services that can change over
 time. The name should be as descriptive as possible e.g. the type of
 services or the most important service being run.
 
-[Test helpers](#test-helpers)<sub><sup> </sup></sub>⚙ have a special naming policy and are
-deployed by [Test helper rotation](#test-helper-rotation)<sub><sup> </sup></sub>⚙
+[Test helpers](#test-helpers)&thinsp;⚙ have a special naming policy and are
+deployed by [Test helper rotation](#test-helper-rotation)&thinsp;⚙
 
 Various legacy names should be cleaned up during re-deploying VMs with
 newer base OS version.
 
+
 ## DNS diagrams
+
 ### A:
 See
 <https://raw.githubusercontent.com/ooni/sysadmin/master/ext/dnsgraph.A.svg>
 
 The image is not included here due to space constraints.
 
+
 ### CNAME:
 ![CNAME](https://raw.githubusercontent.com/ooni/sysadmin/master/ext/dnsgraph.CNAME.svg)
+
 
 ### MX:
 ![MX](https://raw.githubusercontent.com/ooni/sysadmin/master/ext/dnsgraph.MX.svg)
 
+
 ### NS:
 ![NS](https://raw.githubusercontent.com/ooni/sysadmin/master/ext/dnsgraph.NS.svg)
+
 
 ### TXT:
 ![TXT](https://raw.githubusercontent.com/ooni/sysadmin/master/ext/dnsgraph.TXT.svg)
 
+
 ### HTTP Moved Permanently (HTTP code 301):
 ![URL301](https://raw.githubusercontent.com/ooni/sysadmin/master/ext/dnsgraph.URL301.svg)
 
+
 ### HTTP Redirects:
 ![URL](https://raw.githubusercontent.com/ooni/sysadmin/master/ext/dnsgraph.URL.svg)
+
 
 ### Updating DNS diagrams
 To update the diagrams use the sysadmin repository:
@@ -2415,19 +2754,22 @@ to generate the charts:
 It will generate SVG files under the `./ext/` directory. Finally, commit
 and push the dns.json and SVG files.
 
+
 # Operations
 This section contains howtos and runbooks on how to manage and update
 the backend.
 
+
 ## Build, deploy, rollback
-Host deployments are done with the [sysadmin
-repo](https://github.com/ooni/sysadmin)
+Host deployments are done with the
+[sysadmin repo](https://github.com/ooni/sysadmin)
 
 For component updates a deployment pipeline is used:
 
 Look at the \[Status
 dashboard\](<https://github.com/ooni/backend/wiki/Backend>) - be aware
 of badge image caching
+
 
 ## The deployer tool
 Deployments can be performed with a tool that acts as a frontend for
@@ -2450,7 +2792,7 @@ on the hosts.
 
 It runs `apt-get update` and then `apt-get install …​` to update or
 rollback packages. By design, it does not interfere with manual
-execution of apt-get or through tools like [Ansible](#ansible)<sub><sup> </sup></sub>🔧.
+execution of apt-get or through tools like [Ansible](#ansible)&thinsp;🔧.
 This means operators can log on a host to do manual upgrade or rollback
 of packages without breaking the deployer tool.
 
@@ -2463,14 +2805,18 @@ Here is a configuration file example, with comments:
 # Location on the path where SVG badges are stored
 badges_path = /var/www/package_badges
 
+
 # List of packages that are handled by the deployer, space separated
 deb_packages = ooni-api fastpath analysis detector
+
 
 # List of deployment stage names, space separated, from the least to the most critical
 stages = test hel prod
 
+
 # For each stage a block named stage:<stage_name> is required.
 # The block lists the stage hosts.
+
 
 # Example of an unused stage (not list under stages)
 [stage:alpha]
@@ -2532,7 +2878,7 @@ previous stages.
 ```
 
 The deployer tool can also generate SVG badges that can then served by
-[Nginx](#nginx)<sub><sup> </sup></sub>⚙ or copied elsewhere to create a status dashboard.
+[Nginx](#nginx)&thinsp;⚙ or copied elsewhere to create a status dashboard.
 
 Example:
 
@@ -2544,12 +2890,13 @@ Update all badges with:
 ./deployer refresh_badges
 ```
 
+
 ## Adding new tests
 This runbook describes how to add support for a new test in the
-[Fastpath](#fastpath)<sub><sup> </sup></sub>⚙.
+[Fastpath](#fastpath)&thinsp;⚙.
 
-Review [Backend code changes](#backend-code-changes)<sub><sup> </sup></sub>📒, then update [fastpath
-core](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/fastpath/fastpath/core.py)
+Review [Backend code changes](#backend-code-changes)&thinsp;📒, then update
+[fastpath core](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/fastpath/fastpath/core.py)
 to add a scoring function.
 
 See for example `def score_torsf(msm: dict) → dict:`
@@ -2566,16 +2913,53 @@ Update the
 [api](https://github.rom/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/measurements.py#L491)
 if needed.
 
-Deploy on [ams-pg-test.ooni.org](#ams-pg-test.ooni.org)<sub><sup> </sup></sub>🖥 and run end-to-end tests
+Deploy on [ams-pg-test.ooni.org](#ams-pg-test.ooni.org)&thinsp;🖥 and run end-to-end tests
 using real probes.
+
+
+## Adding support for a new test key
+This runbook describes how to modify the [Fastpath](#fastpath)&thinsp;⚙
+and the [API](#api)&thinsp;⚙ to extract, process, store and publish a new measurement
+field.
+
+Start with adding a new column to the [fastpath table](#fastpath-table)&thinsp;⛁
+by following [Adding a new column to the fastpath](#adding-a-new-column-to-the-fastpath)&thinsp;📒.
+
+Add the column to the local ClickHouse instance used for tests and
+[ams-pg-test.ooni.org](#ams-pg-test.ooni.org)&thinsp;🖥.
+
+Update <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/tests/integ/clickhouse_1_schema.sql> as described in
+[Continuous Deployment: Database schema changes](#continuous-deployment:-database-schema-changes)&thinsp;💡
+
+Add support for the new field in the fastpath `core.py` and `db.py` modules
+and related tests.
+See https://github.com/ooni/backend/pull/682 for a comprehensive example.
+
+Run tests locally, then open a draft pull request and ensure the CI tests are
+running successfully.
+
+If needed, the current pull request can be reviewed and deployed without modifying the API to expose the new column. This allows processing data sooner while the API is still being worked on.
+
+Add support for the new column in the API. The change depends on where and how the
+new value is to be published.
+See <https://github.com/ooni/backend/commit/ae2097498ec4d6a271d8cdca9d68bd277a7ac19d#diff-4a1608b389874f2c35c64297e9c676dffafd49b9ba80e495a703ba51d2ebd2bbL359> for a generic example of updating an SQL query in the API and updating related tests.
+
+Deploy the changes on test and pre-production stages after creating the new column in the database.
+See [The deployer tool](#the-deployer-tool)&thinsp;🔧 for details.
+
+Perform end-to-end tests with real probes and [Public and private web UIs](#public-and-private-web-uis)&thinsp;💡 as needed.
+
+Complete the pull request and deploy to production.
+
 
 ## Adding new fingerprints
 This is performed on <https://github.com/ooni/blocking-fingerprints>
 
-Updates are fetched automatically by [Fingerprint
-updater](#comp:fingerprints_updater)
+Updates are fetched automatically by
+[Fingerprint updater](#fingerprint-updater)&thinsp;⚙
 
-Also see [Fingerprint updater dashboard](#fingerprint-updater-dashboard)<sub><sup> </sup></sub>📊.
+Also see [Fingerprint updater dashboard](#fingerprint-updater-dashboard)&thinsp;📊.
+
 
 ## Backend code changes
 This runbook describes making changes to backend components and
@@ -2588,7 +2972,7 @@ Summary of the steps:
 2.  Create a dedicated branch.
 
 3.  Update `debian/changelog` in the component you want to monify. See
-    [Package versioning](#package-versioning)<sub><sup> </sup></sub>💡 for details.
+    [Package versioning](#package-versioning)&thinsp;💡 for details.
 
 4.  Run unit/functional/integ tests as needed.
 
@@ -2596,7 +2980,7 @@ Summary of the steps:
 
 6.  Ensure the CI workflows are successful.
 
-7.  Deploy the package on the testbed [ams-pg-test.ooni.org](#ams-pg-test.ooni.org)<sub><sup> </sup></sub>🖥
+7.  Deploy the package on the testbed [ams-pg-test.ooni.org](#ams-pg-test.ooni.org)&thinsp;🖥
     and verify the change works as intended.
 
 8.  Add a comment the PR with the deployed version and stage.
@@ -2604,8 +2988,8 @@ Summary of the steps:
 9.  Wait for the PR to be approved.
 
 10. Deploy the package to production on
-    [backend-fsn.ooni.org](#backend-fsn.ooni.org)<sub><sup> </sup></sub>🖥. Ensure it is the same version
-    that has been used on the testbed. See [API runbook](#api-runbook)<sub><sup> </sup></sub>📒 for
+    [backend-fsn.ooni.org](#backend-fsn.ooni.org)&thinsp;🖥. Ensure it is the same version
+    that has been used on the testbed. See [API runbook](#api-runbook)&thinsp;📒 for
     deployment steps.
 
 11. Add a comment the PR with the deployed version and stage, then merge
@@ -2613,13 +2997,14 @@ Summary of the steps:
 
 When introducing new metrics:
 
-1.  Create [Grafana](#grafana)<sub><sup> </sup></sub>🔧 dashboards, alerts and [Jupyter
-    Notebook](#tool:jupyter) and link them in the PR.
+1.  Create [Grafana](#grafana)&thinsp;🔧 dashboards, alerts and
+    [Jupyter Notebook](#jupyter-notebook)&thinsp;🔧 and link them in the PR.
 
 2.  Collect and analize metrics and logs from the testbed stages before
     deploying to production.
 
 3.  Test alarming by simulating incidents.
+
 
 ## Backend component deployment
 This runbook provides general steps to deploy backend components on
@@ -2636,7 +3021,7 @@ The amount of testing and monitoring required depends on:
 
 3.  the complexity of the change and the risk of unforeseen impact
 
-Monitor the [API and fastpath](#api-and-fastpath)<sub><sup> </sup></sub>📊 and dedicated . Review past
+Monitor the [API and fastpath](#api-and-fastpath)&thinsp;📊 and dedicated . Review past
 weeks for any anomaly before starting a deployment.
 
 Ensure that either the database schema is consistent with the new
@@ -2651,33 +3036,36 @@ Follow logs with:
 sudo journalctl -f --no-hostname
 ```
 
-While monitoring the logs, deploy the package using the [The deployer
-tool](#tool:deployer) tool. (Details on the tool subchapter)
+While monitoring the logs, deploy the package using the
+[The deployer tool](#the-deployer-tool)&thinsp;🔧 tool. (Details on the tool subchapter)
+
 
 ## API runbook
-This runbook describes making changes to the [API](#api)<sub><sup> </sup></sub>⚙ and
+This runbook describes making changes to the [API](#api)&thinsp;⚙ and
 deploying it.
 
-Follow [Backend code changes](#backend-code-changes)<sub><sup> </sup></sub>📒 and [Backend component
-deployment](#run:backend_deploy).
+Follow [Backend code changes](#backend-code-changes)&thinsp;📒 and
+[Backend component deployment](#backend-component-deployment)&thinsp;📒.
 
 In addition, monitor logs from Nginx and API focusing on HTTP errors and
 failing SQL queries.
 
-Manually check [Explorer](#explorer)<sub><sup> </sup></sub>🖱 and other [Public and private
-web UIs](#topic:uis) as needed.
+Manually check [Explorer](#explorer)&thinsp;🖱 and other
+[Public and private web UIs](#public-and-private-web-uis)&thinsp;💡 as needed.
+
 
 ### Managing feature flags
 To change feature flags in the API a simple pull request like
 <https://github.com/ooni/backend/pull/776> is enough.
 
-Follow [Backend code changes](#backend-code-changes)<sub><sup> </sup></sub>📒 and deploy it after
-basic testing on [ams-pg-test.ooni.org](#ams-pg-test.ooni.org)<sub><sup> </sup></sub>🖥.
+Follow [Backend code changes](#backend-code-changes)&thinsp;📒 and deploy it after
+basic testing on [ams-pg-test.ooni.org](#ams-pg-test.ooni.org)&thinsp;🖥.
+
 
 ## Running database queries
 This subsection describes how to run queries against
-[ClickHouse](#clickhouse)<sub><sup> </sup></sub>⚙. You can run queries from [Jupyter
-Notebook](#tool:jupyter) or from the CLI:
+[ClickHouse](#clickhouse)&thinsp;⚙. You can run queries from
+[Jupyter Notebook](#jupyter-notebook)&thinsp;🔧 or from the CLI:
 
 ```bash
     ssh <backend_host>
@@ -2696,24 +3084,25 @@ Prefer using the default user when possible. To log in as admin:
 
 > **warning**
 > ClickHouse is not transactional! Always test queries that mutate schemas
-> or data on testbeds like [ams-pg-test.ooni.org](#ams-pg-test.ooni.org)<sub><sup> </sup></sub>🖥
+> or data on testbeds like [ams-pg-test.ooni.org](#ams-pg-test.ooni.org)&thinsp;🖥
 
-For long running queries see the use of timeouts in [Fastpath
-deduplication](#run:fp_dedupe)
+For long running queries see the use of timeouts in
+[Fastpath deduplication](#fastpath-deduplication)&thinsp;📒
 
-Also see [Dropping tables](#dropping-tables)<sub><sup> </sup></sub>📒, [Investigating table
-sizes](#run:tablesize)
+Also see [Dropping tables](#dropping-tables)&thinsp;📒,
+[Investigating table sizes](#investigating-table-sizes)&thinsp;📒
+
 
 ### Modifying the fastpath table
-This runbook show an example of changing the contents of the [fastpath
-table](#tbl:fastpath) by running a \"mutation\" query.
+This runbook show an example of changing the contents of the
+[fastpath table](#fastpath-table)&thinsp;⛁ by running a \"mutation\" query.
 
 > **warning**
 > This method creates changes that cannot be reproduced by external
-> researchers by [Reprocessing measurements](#reprocessing-measurements)<sub><sup> </sup></sub>📒. See
-> [Reproducibility](#reproducibility)<sub><sup> </sup></sub>💡
+> researchers by [Reprocessing measurements](#reprocessing-measurements)&thinsp;📒. See
+> [Reproducibility](#reproducibility)&thinsp;💡
 
-In this example [Signal test](#signal-test)<sub><sup> </sup></sub>Ⓣ measurements are being
+In this example [Signal test](#signal-test)&thinsp;Ⓣ measurements are being
 flagged as failed due to <https://github.com/ooni/probe/issues/2627>
 
 Summarize affected measurements with:
@@ -2753,10 +3142,11 @@ AND msm_failure = 'f'
 Run the previous `SELECT` queries to monitor the mutation and its
 outcome.
 
-## Updating tor targets
-See [Tor targets](#tor-targets)<sub><sup> </sup></sub>🐝 for a general description.
 
-Review the [Ansible](#ansible)<sub><sup> </sup></sub>🔧 chapter. Checkout the repository and
+## Updating tor targets
+See [Tor targets](#tor-targets)&thinsp;🐝 for a general description.
+
+Review the [Ansible](#ansible)&thinsp;🔧 chapter. Checkout the repository and
 update the file `ansible/roles/ooni-backend/templates/tor_targets.json`
 
 Commit the changes and deploy as usual:
@@ -2771,19 +3161,18 @@ Test the updated configuration, then:
 
 git-push the changes.
 
-Implements [Document Tor targets](#document-tor-targets)<sub><sup> </sup></sub>🐞
+Implements [Document Tor targets](#document-tor-targets)&thinsp;🐞
+
 
 ## Creating admin API accounts
-See [Auth](#auth)<sub><sup> </sup></sub>🐝 for a description of the API entry points related
+See [Auth](#auth)&thinsp;🐝 for a description of the API entry points related
 to account management.
 
 The API provides entry points to:
 
--   [get
-    role](https://api.ooni.io/apidocs/#/default/get_api_v1_get_account_role__email_address_)
+ * [get role](https://api.ooni.io/apidocs/#/default/get_api_v1_get_account_role__email_address_)
 
--   [set
-    role](https://api.ooni.io/apidocs/#/default/post_api_v1_set_account_role).
+ * [set role](https://api.ooni.io/apidocs/#/default/post_api_v1_set_account_role).
 
 The latter is implemented
 [here](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/auth.py#L437).
@@ -2796,12 +3185,12 @@ To change roles it is required to be authenticated and have a role as
 `admin`.
 
 It is also possible to create or update roles by running SQL queries
-directly on [ClickHouse](#clickhouse)<sub><sup> </sup></sub>⚙. This can be necessary to
+directly on [ClickHouse](#clickhouse)&thinsp;⚙. This can be necessary to
 create the initial `admin` account on a new deployment stage.
 
 A quick way to identify the account ID an user is to extract logs from
-the [API](#api)<sub><sup> </sup></sub>⚙ either from the backend host or using [Logs from
-FSN notebook](#nb:logs)
+the [API](#api)&thinsp;⚙ either from the backend host or using
+[Logs from FSN notebook](#logs-from-fsn-notebook)&thinsp;📔
 
 ```bash
 sudo journalctl --since '5 min ago' -u ooni-api | grep 'SELECT role FROM accounts WHERE account_id' -C5
@@ -2811,12 +3200,18 @@ Example output:
 
     Nov 09 16:03:00 backend-fsn ooni-api[1763457]: DEBUG Query: SELECT role FROM accounts WHERE account_id = '<redacted>'
 
-ams-pg-test:\~\$ clickhouse-client
+Then on the database test host:
 
-Then insert a record to give\`admin\` role to the user. See [Running
-database queries](#run:db_query):
+```bash
+clickhouse-client
+```
 
-    INSERT INTO accounts (account_id, role) VALUES ('<redacted>', 'admin')
+Then in the ClickHouse shell insert a record to give\`admin\` role to
+the user. See [Running database queries](#running-database-queries)&thinsp;📒:
+
+```sql
+INSERT INTO accounts (account_id, role) VALUES ('<redacted>', 'admin')
+```
 
 `accounts` is an EmbeddedRocksDB table with `account_id` as primary key.
 No record deduplication is necessary.
@@ -2832,19 +3227,21 @@ This is due to the use of a configuration variable
 parameter is read from the API configuration file. The values are
 different across deployment stages as a security feature.
 
+
 ## Fastpath runbook
+
 ### Fastpath code changes and deployment
-Review [Backend code changes](#backend-code-changes)<sub><sup> </sup></sub>📒 and [Backend component
-deployment](#run:backend_deploy) for changes and deployment of the
+Review [Backend code changes](#backend-code-changes)&thinsp;📒 and
+[Backend component deployment](#backend-component-deployment)&thinsp;📒 for changes and deployment of the
 backend stack in general.
 
-Also see [Modifying the fastpath table](#modifying-the-fastpath-table)<sub><sup> </sup></sub>📒
+Also see [Modifying the fastpath table](#modifying-the-fastpath-table)&thinsp;📒
 
-In addition, monitor logs and [Grafana dashboards](#grafana-dashboards)<sub><sup> </sup></sub>💡
+In addition, monitor logs and [Grafana dashboards](#grafana-dashboards)&thinsp;💡
 focusing on changes in incoming measurements.
 
-You can use the [The deployer tool](#the-deployer-tool)<sub><sup> </sup></sub>🔧 tool to perform
-deployment and rollbacks of the [Fastpath](#fastpath)<sub><sup> </sup></sub>⚙.
+You can use the [The deployer tool](#the-deployer-tool)&thinsp;🔧 tool to perform
+deployment and rollbacks of the [Fastpath](#fastpath)&thinsp;⚙.
 
 > **important**
 > the fastpath is configured **not** to restart automatically during
@@ -2852,15 +3249,21 @@ deployment and rollbacks of the [Fastpath](#fastpath)<sub><sup> </sup></sub>⚙.
 
 Always monitor logs and restart it as needed:
 
-    sudo systemctl restart fastpath
+```bash
+sudo systemctl restart fastpath
+```
+
 
 ### Fastpath manual deployment
 Sometimes it can be useful to run APT directly:
 
-    ssh <host>
-    sudo apt-get update
-    apt-cache show fastpath | grep Ver | head -n5
-    sudo apt-get install fastpath=<version>
+```bash
+ssh <host>
+sudo apt-get update
+apt-cache show fastpath | grep Ver | head -n5
+sudo apt-get install fastpath=<version>
+```
+
 
 ### Reprocessing measurements
 Reprocess old measurement by running the fastpath manually. This can be
@@ -2869,7 +3272,7 @@ measurements.
 
 You can run the fastpath as root or using the fastpath user. Both users
 are able to read the configuration file under `/etc/ooni`. The fastpath
-will download [Postcans](#postcans)<sub><sup> </sup></sub>💡 in the local directory.
+will download [Postcans](#postcans)&thinsp;💡 in the local directory.
 
 `fastpath -h` generates:
 
@@ -2918,31 +3321,37 @@ The `--ccs` and `--testnames` flags are useful to selectively reprocess
 measurements.
 
 After reprocessing measurements it's recommended to manually deduplicate
-the contents of the `fastpath` table. See [Fastpath
-deduplication](#run:fp_dedupe)
+the contents of the `fastpath` table. See
+[Fastpath deduplication](#fastpath-deduplication)&thinsp;📒
 
 > **note**
 > it is possible to run multiple `fastpath` processes using
 > <https://www.gnu.org/software/parallel/> with different time ranges.
 > Running the reprocessing under `byobu` is recommended.
 
-The fastpath will pull [Postcans](#postcans)<sub><sup> </sup></sub>💡 from S3. See [Feed
-fastpath from JSONL](#bug:778) for possible speedup.
+The fastpath will pull [Postcans](#postcans)&thinsp;💡 from S3. See
+[Feed fastpath from JSONL](#feed-fastpath-from-jsonl)&thinsp;🐞 for possible speedup.
+
 
 ### Fastpath monitoring
-The fastpath pipeline can be monitored using the [Fastpath
-dashboard](#dash:api_fp) and [API and fastpath](#api-and-fastpath)<sub><sup> </sup></sub>📊.
+The fastpath pipeline can be monitored using the
+[Fastpath dashboard](#dash:api_fp) and [API and fastpath](#api-and-fastpath)&thinsp;📊.
 
 Also follow real-time process using:
 
     sudo journalctl -f -u fastpath
+
 
 ## Android probe release runbook
 This runbook is meant to help coordinate Android probe releases between
 the probe and backend developers and public announcements. It does not
 contain detailed instructions for individual components.
 
+Also see the [Measurement drop runbook](#measurement-drop-tutorial)&thinsp;📒.
+
+
 Roles: \@probe, \@backend, \@media
+
 
 ### Android pre-release
 \@probe: drive the process involving the other teams as needed. Create
@@ -2955,23 +3364,25 @@ and
 <https://grafana.ooni.org/d/l-MQSGonk/api-and-fastpath-multihost?orgId=1&refresh=5s&var-avgspan=8h&var-host=backend-fsn.ooni.org&from=now-30d&to=now>
 for long-term trends
 
+
 ### Android release
 \@probe: release the probe for early adopters
 
 \@backend: monitor
 <https://jupyter.ooni.org/view/notebooks/jupycron/autorun_android_probe_release.html>
 frequently during the first 24h and report any drop on
-[Slack](#slack)<sub><sup> </sup></sub>🔧
+[Slack](#slack)&thinsp;🔧
 
 \@probe: wait at least 24h then release the probe for all users
 
 \@backend: monitor
 <https://jupyter.ooni.org/view/notebooks/jupycron/autorun_android_probe_release.html>
-daily for 14 days and report any drop on [Slack](#slack)<sub><sup> </sup></sub>🔧
+daily for 14 days and report any drop on [Slack](#slack)&thinsp;🔧
 
 \@probe: wait at least 24h then poke \@media to announce the release
 
 (<https://github.com/ooni/backend/wiki/Runbooks:-Android-Probe-Release>
+
 
 ## CLI probe release runbook
 This runbook is meant to help coordinate CLI probe releases between the
@@ -2979,6 +3390,7 @@ probe and backend developers and public announcements. It does not
 contain detailed instructions for individual components.
 
 Roles: \@probe, \@backend, \@media
+
 
 ### CLI pre-release
 \@probe: drive the process involving the other teams as needed. Create
@@ -2991,24 +3403,26 @@ and
 \[grafana\](<https://grafana.ooni.org/d/l-MQSGonk/api-and-fastpath-multihost?orgId=1&refresh=5s&var-avgspan=8h&var-host=backend-fsn.ooni.org&from=now-30d&to=now>)
 for long-term trends
 
+
 ### CLI release
 \@probe: release the probe for early adopters
 
 \@backend: monitor
 \[jupyter\](<https://jupyter.ooni.org/view/notebooks/jupycron/autorun_cli_probe_release.html>)
 frequently during the first 24h and report any drop on
-[Slack](#slack)<sub><sup> </sup></sub>🔧
+[Slack](#slack)&thinsp;🔧
 
 \@probe: wait at least 24h then release the probe for all users
 
 \@backend: monitor
 \[jupyter\](<https://jupyter.ooni.org/view/notebooks/jupycron/autorun_cli_probe_release.html>)
-daily for 14 days and report any drop on [Slack](#slack)<sub><sup> </sup></sub>🔧
+daily for 14 days and report any drop on [Slack](#slack)&thinsp;🔧
 
 \@probe: wait at least 24h then poke \@media to announce the release
 
+
 ## Investigating heavy aggregation queries runbook
-In the following scenario the [Aggregation and MAT](#aggregation-and-mat)<sub><sup> </sup></sub>🐝 API is
+In the following scenario the [Aggregation and MAT](#aggregation-and-mat)&thinsp;🐝 API is
 experiencing query timeouts impacting users.
 
 Reproduce the issue by setting a large enough time span on the MAT,
@@ -3018,26 +3432,25 @@ e.g.:
 Click on the link to JSON, e.g.
 <https://api.ooni.io/api/v1/aggregation?test_name=web_connectivity&axis_x=measurement_start_day&since=2023-01-01&until=2023-11-15&time_grain=day>
 
-Review the [backend-fsn.ooni.org](#backend-fsn.ooni.org)<sub><sup> </sup></sub>🖥 metrics on
+Review the [backend-fsn.ooni.org](#backend-fsn.ooni.org)&thinsp;🖥 metrics on
 <https://grafana.ooni.org/d/M1rOa7CWz/netdata?orgId=1&var-instance=backend-fsn.ooni.org:19999>
-(see [Netdata-specific dashboard](#netdata-specific-dashboard)<sub><sup> </sup></sub>📊 for details)
+(see [Netdata-specific dashboard](#netdata-specific-dashboard)&thinsp;📊 for details)
 
-Also review the [API and fastpath](#api-and-fastpath)<sub><sup> </sup></sub>📊 dashboard, looking at
+Also review the [API and fastpath](#api-and-fastpath)&thinsp;📊 dashboard, looking at
 CPU load, disk I/O, query time, measurement flow.
 
-Also see [Aggregation cache monitoring](#aggregation-cache-monitoring)<sub><sup> </sup></sub>🐍
+Also see [Aggregation cache monitoring](#aggregation-cache-monitoring)&thinsp;🐍
 
-Refresh and review the charts on the [ClickHouse queries
-notebook](#nb:click_q).
+Refresh and review the charts on the [ClickHouse queries notebook](#clickhouse-queries-notebook)&thinsp;📔.
 
 In this instance frequent calls to the aggregation API are found.
 
-Review the summary of the API quotas. See [Calling the API
-manually](#run:api_manually) for details:
+Review the summary of the API quotas. See
+[Calling the API manually](#calling-the-api-manually)&thinsp;📒 for details:
 
     $ http https://api.ooni.io/api/_/quotas_summary Authorization:'Bearer <mytoken>'
 
-Log on [backend-fsn.ooni.org](#backend-fsn.ooni.org)<sub><sup> </sup></sub>🖥 and review the logs:
+Log on [backend-fsn.ooni.org](#backend-fsn.ooni.org)&thinsp;🖥 and review the logs:
 
     backend-fsn:~$ sudo journalctl --since '5 min ago'
 
@@ -3055,15 +3468,18 @@ Summarize the subnets calling the API:
      11 <redacted subnet>
      10 <redacted subnet>
 
-To block IP addresses or subnets see [Nginx](#nginx)<sub><sup> </sup></sub>⚙ or
-[HaProxy](#haproxy)<sub><sup> </sup></sub>⚙, then configure the required file in
-[Ansible](#ansible)<sub><sup> </sup></sub>🔧 and deploy.
+To block IP addresses or subnets see [Nginx](#nginx)&thinsp;⚙ or
+[HaProxy](#haproxy)&thinsp;⚙, then configure the required file in
+[Ansible](#ansible)&thinsp;🔧 and deploy.
 
-Also see [Limiting scraping](#limiting-scraping)<sub><sup> </sup></sub>📒.
+Also see [Limiting scraping](#limiting-scraping)&thinsp;📒.
+
 
 ## Aggregation cache monitoring
 To monitor cache hit/miss ratio using StatsD metrics the following
 script can be run as needed.
+
+See [Metrics list](#metrics-list)&thinsp;💡.
 
 ``` python
 import subprocess
@@ -3083,6 +3499,7 @@ if __name__ == '__main__':
     main()
 ```
 
+
 ## Limiting scraping
 Aggressive bots and scrapers can be limited using a combination of
 methods. Listed below ordered starting from the most user-friendly:
@@ -3090,48 +3507,49 @@ methods. Listed below ordered starting from the most user-friendly:
 1.  Reduce the impact on the API (CPU, disk I/O, memory usage) by
     caching the results.
 
-2.  [Rate limiting and quotas](#rate-limiting-and-quotas)<sub><sup> </sup></sub>🐝 already built in the API. It
+2.  [Rate limiting and quotas](#rate-limiting-and-quotas)&thinsp;🐝 already built in the API. It
     might need lowering of the quotas.
 
-3.  Adding API entry points to [Robots.txt](#robots.txt)<sub><sup> </sup></sub>🐝
+3.  Adding API entry points to [Robots.txt](#robots.txt)&thinsp;🐝
 
-4.  Adding specific `User-Agent` entries to [Robots.txt](#robots.txt)<sub><sup> </sup></sub>🐝
+4.  Adding specific `User-Agent` entries to [Robots.txt](#robots.txt)&thinsp;🐝
 
-5.  Blocking IP addresses or subnets in the [Nginx](#nginx)<sub><sup> </sup></sub>⚙ or
-    [HaProxy](#haproxy)<sub><sup> </sup></sub>⚙ configuration files
+5.  Blocking IP addresses or subnets in the [Nginx](#nginx)&thinsp;⚙ or
+    [HaProxy](#haproxy)&thinsp;⚙ configuration files
 
 To add caching to the API or increase the expiration times:
 
-1.  Identify API calls that cause significant load. [Nginx](#nginx)<sub><sup> </sup></sub>⚙
+1.  Identify API calls that cause significant load. [Nginx](#nginx)&thinsp;⚙
     is configured to log timing information for each HTTP request. See
-    [Logs investigation notebook](#logs-investigation-notebook)<sub><sup> </sup></sub>📔 for examples. Also see
-    [Logs from FSN notebook](#logs-from-fsn-notebook)<sub><sup> </sup></sub>📔 and [ClickHouse instance for
-    logs](#comp:click_log). Additionally, [Aggregation cache
-    monitoring](#py:aggcache) can be tweaked for the present use-case.
+    [Logs investigation notebook](#logs-investigation-notebook)&thinsp;📔 for examples. Also see
+    [Logs from FSN notebook](#logs-from-fsn-notebook)&thinsp;📔 and
+    [ClickHouse instance for logs](#clickhouse-instance-for-logs)&thinsp;⚙. Additionally,
+    [Aggregation cache monitoring](#aggregation-cache-monitoring)&thinsp;🐍 can be tweaked for the present use-case.
 
 2.  Implement caching or increase expiration times across the API
-    codebase. See [API cache](#api-cache)<sub><sup> </sup></sub>💡 and [Purging Nginx
-    cache](#run:cachepurge).
+    codebase. See [API cache](#api-cache)&thinsp;💡 and
+    [Purging Nginx cache](#purging-nginx-cache)&thinsp;📒.
 
 3.  Monitor the improvement in terms of cache hit VS cache miss ratio.
 
 > **important**
 > Caching can be applied selectively for API requests that return rapidly
-> changing data VS old, stable data. See [Aggregation and MAT](#aggregation-and-mat)<sub><sup> </sup></sub>🐝
+> changing data VS old, stable data. See [Aggregation and MAT](#aggregation-and-mat)&thinsp;🐝
 > for an example.
 
 To update the quotas edit the API here
 <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/app.py#L187>
 and deploy as usual.
 
-To update the `robots.txt` entry point see [Robots.txt](#robots.txt)<sub><sup> </sup></sub>🐝 and
+To update the `robots.txt` entry point see [Robots.txt](#robots.txt)&thinsp;🐝 and
 edit the API here
 <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/pages/>*init*.py#L124
 and deploy as usual
 
-To block IP addresses or subnets see [Nginx](#nginx)<sub><sup> </sup></sub>⚙ or
-[HaProxy](#haproxy)<sub><sup> </sup></sub>⚙, then configure the required file in
-[Ansible](#ansible)<sub><sup> </sup></sub>🔧 and deploy.
+To block IP addresses or subnets see [Nginx](#nginx)&thinsp;⚙ or
+[HaProxy](#haproxy)&thinsp;⚙, then configure the required file in
+[Ansible](#ansible)&thinsp;🔧 and deploy.
+
 
 ## Calling the API manually
 To make HTTP calls to the API manually you'll need to extact a JWT from
@@ -3154,73 +3572,82 @@ E.g.:
 > **note**
 > Do not leave whitespaces after \"Authorization:\"
 
+
 ## Debian packages
 This section lists the Debian packages used to deploy backend
-components. They are built by [GitHub CI workflows](#github-ci-workflows)<sub><sup> </sup></sub>💡
-and deployed using [The deployer tool](#the-deployer-tool)<sub><sup> </sup></sub>🔧. See [Debian
-package build and publish](#topic:deb_build).
+components. They are built by [GitHub CI workflows](#github-ci-workflows)&thinsp;💡
+and deployed using [The deployer tool](#the-deployer-tool)&thinsp;🔧. See
+[Debian package build and publish](#debian-package-build-and-publish)&thinsp;💡.
+
 
 ### ooni-api package
-Debian package for the [API](#api)<sub><sup> </sup></sub>⚙
+Debian package for the [API](#api)&thinsp;⚙
+
 
 ### fastpath package
-Debian package for the [Fastpath](#fastpath)<sub><sup> </sup></sub>⚙
+Debian package for the [Fastpath](#fastpath)&thinsp;⚙
+
 
 ### detector package
-Debian package for the [Social media blocking event
-detector](#comp:detector)
+Debian package for the
+[Social media blocking event detector](#social-media-blocking-event-detector)&thinsp;⚙
+
 
 ### analysis package
 The `analysis` Debian package contains various tools and runs various of
-systemd timers, see [Systemd timers](#systemd-timers)<sub><sup> </sup></sub>💡.
+systemd timers, see [Systemd timers](#systemd-timers)&thinsp;💡.
+
 
 ### Analysis deployment
-See [Backend component deployment](#backend-component-deployment)<sub><sup> </sup></sub>📒
+See [Backend component deployment](#backend-component-deployment)&thinsp;📒
+
 
 # Measurement uploader
 This component uploads fresh measurements from
-[backend-fsn.ooni.org](#host:FSN) to [S3 data bucket](#s3-data-bucket)<sub><sup> </sup></sub>💡
-after compressing them into [Postcans](#postcans)<sub><sup> </sup></sub>💡 and .jsonl
+[backend-fsn.ooni.org](#host:FSN) to [S3 data bucket](#s3-data-bucket)&thinsp;💡
+after compressing them into [Postcans](#postcans)&thinsp;💡 and .jsonl
 files.
 
-It inserts records in the [jsonl table](#jsonl-table)<sub><sup> </sup></sub>⛁ using the `api`
+It inserts records in the [jsonl table](#jsonl-table)&thinsp;⛁ using the `api`
 database user.
 
 The uploader runs hourly. The measurement batching process is designed
 to avoid data loss in case of interruption or crash:
 
--   Scan for raw measurements from the spool directory, typically
+ * Scan for raw measurements from the spool directory, typically
     `/var/lib/ooniapi/measurements/incoming/`
 
--   Generate one [Postcans](#postcans)<sub><sup> </sup></sub>💡 and [JSONL
-    files](#topic:jsonl) in a different directory
+ * Generate one [Postcans](#postcans)&thinsp;💡 and
+    [JSONL files](#jsonl-files)&thinsp;💡 in a different directory
 
--   Delete the raw measurements
+ * Delete the raw measurements
 
--   Upload the postcan and jsonl files to [S3 data
-    bucket](#topic:s3data)
+ * Upload the postcan and jsonl files to
+    [S3 data bucket](#s3-data-bucket)&thinsp;💡
 
--   Insert new records in [jsonl table](#jsonl-table)<sub><sup> </sup></sub>⛁ with fields
+ * Insert new records in [jsonl table](#jsonl-table)&thinsp;⛁ with fields
     `report_id`, `input`, `s3path`, `linenum`, `measurement_uid`
 
 The jsonl table is used by the API to look up measurement bodies. There
 is one line per measurement. The `s3path` column identifies the key on
-[S3 data bucket](#s3-data-bucket)<sub><sup> </sup></sub>💡 containing the compressed JSONL file
+[S3 data bucket](#s3-data-bucket)&thinsp;💡 containing the compressed JSONL file
 with the measurement data. The `linenum` column contains the line number
 in such file where the measurement is found. See
-[Measurements](#measurements)<sub><sup> </sup></sub>🐝
+[Measurements](#measurements)&thinsp;🐝
 
 Reads the `/etc/ooni/api.conf` file. The file itself is deployed by
-[Ansible](#ansible)<sub><sup> </sup></sub>🔧.
+[Ansible](#ansible)&thinsp;🔧.
 
-Also see the [Measurement uploader dashboard](#measurement-uploader-dashboard)<sub><sup> </sup></sub>📊, [uploader
-timer](#timer:uploader) and [Main data flows](#main-data-flows)<sub><sup> </sup></sub>💡
+Also see the [Measurement uploader dashboard](#measurement-uploader-dashboard)&thinsp;📊,
+[uploader timer](#timer:uploader) and [Main data flows](#main-data-flows)&thinsp;💡
 
 [Sources](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooni_api_uploader.py)
+
 
 ## Postcans
 A "postcan" is tarball containing measurements as they are uploaded by
 the probes, optionally compressed. Postcans are meant for internal use.
+
 
 # S3 data bucket
 The `ooni-data-eu-fra` Amazon S3 bucket contains the whole OONI dataset.
@@ -3229,13 +3656,14 @@ It is accessible with the S3 protocol and also over HTTPS:
 
 It uses a dedicated [Open Data](https://aws.amazon.com/opendata/)
 account providing free hosting for public data. Details on the OONI
-account used for this are in the [Team credential
-repository](#topic:teamcreds).
+account used for this are in the
+[Team credential repository](#team-credential-repository)&thinsp;💡.
 
 > **note**
 > All data on the bucket has to be kept publicly accessible to comply with
 > the Open Data requirements. Do not run other AWS services using the Open
 > Data account.
+
 
 # S3 measurement files layout
 Probes usually upload multiple measurements on each execution.
@@ -3247,6 +3675,7 @@ will be published on S3.
 
 Specifications of the raw measurement data can be found inside of the
 `ooni/spec` repository.
+
 
 ## JSONL files
 File paths in the S3 bucket in JSONL format.
@@ -3260,13 +3689,14 @@ based on the researcher's needs.
 
 In the path template:
 
--   `cc` is an uppercase 2 letter country code
+ * `cc` is an uppercase 2 letter country code
 
--   `testname` is a test name where underscores are removed
+ * `testname` is a test name where underscores are removed
 
--   `timestamp` is a YYYYMMDD timestamp
+ * `timestamp` is a YYYYMMDD timestamp
 
--   `name` is a unique filename
+ * `name` is a unique filename
+
 
 ### Compressed JSONL from measurements before 20201021
 The path structure is:
@@ -3280,6 +3710,7 @@ You can list JSONL files with:
 
     s3cmd ls s3://ooni-data-eu-fra/jsonl/
     s3cmd ls s3://ooni-data-eu-fra/jsonl/webconnectivity/US/20201021/00/
+
 
 ### Compressed JSONL from measurements starting from 20201020
 The path structure is:
@@ -3296,6 +3727,7 @@ You can list JSONL files with:
 
     s3cmd ls s3://ooni-data-eu-fra/raw/20210817/15/US/webconnectivity/
 
+
 ### Raw "postcans" from measurements starting from 20201020
 Each HTTP POST is stored in the tarball as
 `<timestamp>_<cc>_<testname>/<timestamp>_<cc>_<testname>_<hash>.post`
@@ -3309,39 +3741,42 @@ Listing postcan files:
     s3cmd ls s3://ooni-data-eu-fra/raw/20210817/
     s3cmd ls s3://ooni-data-eu-fra/raw/20210817/11/GB/webconnectivity/
 
+
 # Other backend components
+
 ## Nginx
 Nginx <https://www.nginx.com/> is used across various servers in the
 backend, primarily as a reverse proxy. It's worth summarizing the main
 different uses here:
 
--   Reverse proxy for the [API](#api)<sub><sup> </sup></sub>⚙, also providing **caching**
+ * Reverse proxy for the [API](#api)&thinsp;⚙, also providing **caching**
     from many API methods
 
--   Serving local measurements from disk from the backend hosts
+ * Serving local measurements from disk from the backend hosts
 
--   Serving Atom/RSS feeds from disk from the backend hosts
+ * Serving Atom/RSS feeds from disk from the backend hosts
 
--   Serving ACME challenge text files for [Dehydrated](#dehydrated)<sub><sup> </sup></sub>⚙
+ * Serving ACME challenge text files for [Dehydrated](#dehydrated)&thinsp;⚙
 
--   Reverse proxy for the test helpers
+ * Reverse proxy for the test helpers
 
--   Reverse proxy for deb.ooni.org
+ * Reverse proxy for deb.ooni.org
 
--   Reverse proxy for internal or ancillary services e.g.
-    [Prometheus](#tool:prometheus) scraping, [Grafana](#grafana)<sub><sup> </sup></sub>🔧
+ * Reverse proxy for internal or ancillary services e.g.
+    [Prometheus](#tool:prometheus) scraping, [Grafana](#grafana)&thinsp;🔧
     etc
 
 Nginx configuration files are stored in
 <https://github.com/ooni/sysadmin/tree/master/ansible>
 
 Most of the proxying functionalities of Nginx can be replaced with
-[HaProxy](#haproxy)<sub><sup> </sup></sub>⚙ to benefit from load balancing and active
+[HaProxy](#haproxy)&thinsp;⚙ to benefit from load balancing and active
 checks.
 
 Caching could be provided by Varnish <https://varnish-cache.org/> as it
 provides the ability to explicitly purge caches. This would be useful
 when testing the API.
+
 
 ### Purging Nginx cache
 While testing the API it can be useful to purge the cache provide by
@@ -3355,43 +3790,44 @@ This selectively removes the cache files used for the API:
 > This method is not natively supported by Nginx. It's recommended to use
 > it only on the backend testbed.
 
-## HaProxy
-HaProxy runs on the [OONI bridges](#ooni-bridges)<sub><sup> </sup></sub>⚙ and works as a
-load balancer for the test helpers and the APIs on
-[backend-hel.ooni.org](#host:HEL), [ams-pg-test.ooni.org](#ams-pg-test.ooni.org)<sub><sup> </sup></sub>🖥
-and the bridge on [bridge-greenhost.ooni.org](#bridge-greenhost.ooni.org)<sub><sup> </sup></sub>🖥.
 
-Contrasted to [Nginx](#nginx)<sub><sup> </sup></sub>⚙ it's focused on load balancing rather
+## HaProxy
+HaProxy runs on the [OONI bridges](#ooni-bridges)&thinsp;⚙ and works as a
+load balancer for the test helpers and the APIs on
+[backend-hel.ooni.org](#host:HEL), [ams-pg-test.ooni.org](#ams-pg-test.ooni.org)&thinsp;🖥
+and the bridge on [bridge-greenhost.ooni.org](#bridge-greenhost.ooni.org)&thinsp;🖥.
+
+Contrasted to [Nginx](#nginx)&thinsp;⚙ it's focused on load balancing rather
 than serving files and provides:
 
--   dashboards showing the current status of the web services and the
+ * dashboards showing the current status of the web services and the
     load balancing targets
 
--   flexible active healthchecks and failover
+ * flexible active healthchecks and failover
 
--   more detailed metrics
+ * more detailed metrics
 
--   more flexible routing policies that allow implementing better
+ * more flexible routing policies that allow implementing better
     incremental rollouts, A/B testing etc
 
 HaProxy is currently deployed on:
 
--   [ams-pg-test.ooni.org](#ams-pg-test.ooni.org)<sub><sup> </sup></sub>🖥
+ * [ams-pg-test.ooni.org](#ams-pg-test.ooni.org)&thinsp;🖥
     <https://ams-pg-test.ooni.org:444/__haproxy_stats>
 
--   [backend-hel.ooni.org](#backend-hel.ooni.org)<sub><sup> </sup></sub>🖥
+ * [backend-hel.ooni.org](#backend-hel.ooni.org)&thinsp;🖥
     <https://backend-hel.ooni.org:444/__haproxy_stats>
 
--   [bridge-greenhost.ooni.org](#bridge-greenhost.ooni.org)<sub><sup> </sup></sub>🖥
+ * [bridge-greenhost.ooni.org](#bridge-greenhost.ooni.org)&thinsp;🖥
     <https://bridge-greenhost.ooni.org:444/__haproxy_stats>
 
 An example of the built-in dashboard:
 
 ![haproxy](../../../assets/images-backend/haproxy.png)
 
-Also see [HaProxy dashboard](#haproxy-dashboard)<sub><sup> </sup></sub>📊.
+Also see [HaProxy dashboard](#haproxy-dashboard)&thinsp;📊.
 
-When providing load balancing for the [Test helpers](#test-helpers)<sub><sup> </sup></sub>⚙
+When providing load balancing for the [Test helpers](#test-helpers)&thinsp;⚙
 it uses a stateful algorithm based on the source IP address to ensure
 that every given probe reaches the same test helper. This is meant to
 help troubleshooting. Yet, in case a test helper becomes unreachable
@@ -3399,39 +3835,42 @@ probe traffic is sent to the remaining test helpers. This affects
 exclusively the probes that were using the unreachable test helper. The
 probes that were reaching other test helpers are not shuffled around.
 
+
 ## Dehydrated
 Dehydrated provides Let's Encrypt certificate handling using ACME. It
 replaces certbot with a simpler and more reliable implementation.
 
-Dehydrated is configured in [Ansible](#ansible)<sub><sup> </sup></sub>🔧, see
+Dehydrated is configured in [Ansible](#ansible)&thinsp;🔧, see
 <https://github.com/ooni/sysadmin/tree/master/ansible/roles/dehydrated>
 
-For monitoring see [TLS certificate dashboard](#tls-certificate-dashboard)<sub><sup> </sup></sub>📊. There are
-alerts configured in [Grafana](#grafana)<sub><sup> </sup></sub>🔧 to alert on expiring
-certificates, see [Alerting](#alerting)<sub><sup> </sup></sub>💡.
+For monitoring see [TLS certificate dashboard](#tls-certificate-dashboard)&thinsp;📊. There are
+alerts configured in [Grafana](#grafana)&thinsp;🔧 to alert on expiring
+certificates, see [Alerting](#alerting)&thinsp;💡.
+
 
 ## Jupyter Notebook
 There is an instance of Jupyter Notebook <https://jupyter.org/> deployed
-on the [monitoring.ooni.org](#monitoring.ooni.org)<sub><sup> </sup></sub>🖥 available for internal
+on the [monitoring.ooni.org](#monitoring.ooni.org)&thinsp;🖥 available for internal
 use at <https://jupyter.ooni.org/tree/notebooks>
 
 It is used primarily for:
 
--   Performing research and data analysis using data science tools like
+ * Performing research and data analysis using data science tools like
     [Pandas](https://pandas.pydata.org/) and
     [Altair](https://altair-viz.github.io/).
 
--   Generating automatic dashboards using [Jupycron](#jupycron)<sub><sup> </sup></sub>🔧 and
+ * Generating automatic dashboards using [Jupycron](#jupycron)&thinsp;🔧 and
     sending alerts.
 
--   Analyzing logs from the [ClickHouse instance for
-    logs](#comp:click_log)
+ * Analyzing logs from the
+    [ClickHouse instance for logs](#clickhouse-instance-for-logs)&thinsp;⚙
 
 > **important**
 > There in no user account support in Jupyter Notebook. The instance is
 > protected by HTTP basic auth using team credentials. To clarify
 > ownership of notebooks put your account name as part of the notebook
 > name. To prevent data loss do not modify notebooks owned by other users.
+
 
 ### Ooniutils microlibrary
 The following notebook is often used as a library in other notebooks:
@@ -3444,24 +3883,24 @@ It can be imported in other notebooks by adding this at the top:
 > **important**
 > be careful when making changes to it because it could break many
 > notebooks including the ones automatically run by
-> [Jupycron](#jupycron)<sub><sup> </sup></sub>🔧
+> [Jupycron](#jupycron)&thinsp;🔧
 
 Running the notebook imports commonly used libraries, including Pandas
 and Altair, configures Jupyter Notebook and provides some convenience
 functions:
 
--   `click_query_fsn(query, **params)` to run queries against ClickHouse
-    on [backend-fsn.ooni.org](#backend-fsn.ooni.org)<sub><sup> </sup></sub>🖥. Returns a Pandas dataframe.
+ * `click_query_fsn(query, **params)` to run queries against ClickHouse
+    on [backend-fsn.ooni.org](#backend-fsn.ooni.org)&thinsp;🖥. Returns a Pandas dataframe.
 
--   `alertmanager_fire_alert(summary, alertname, job="", instance="", annotations={}, duration_min=1)`
-    to send an alert through alertmanager ([Grafana](#grafana)<sub><sup> </sup></sub>🔧).
+ * `alertmanager_fire_alert(summary, alertname, job="", instance="", annotations={}, duration_min=1)`
+    to send an alert through alertmanager ([Grafana](#grafana)&thinsp;🔧).
 
--   `send_slack_msg(title, msg, color="3AA3E3")` to send messages
-    directly to [Slack](#slack)<sub><sup> </sup></sub>🔧.
+ * `send_slack_msg(title, msg, color="3AA3E3")` to send messages
+    directly to [Slack](#slack)&thinsp;🔧.
 
--   `send_alert_through_ntfy(title, msg, priority="urgent", tags="warning")`
-    to send alerts directly using <https://ntfy.sh/> - see [Redundant
-    notifications](#tool:ntfy) for details.
+ * `send_alert_through_ntfy(title, msg, priority="urgent", tags="warning")`
+    to send alerts directly using <https://ntfy.sh/> - see
+    [Redundant notifications](#redundant-notifications)&thinsp;🔧 for details.
 
 Confusingly, `alertmanager_fire_alert` needs an alarm duration to be set
 when called.
@@ -3476,21 +3915,22 @@ Additionally, `send_slack_msg` can deliver clickable links.
 > When creating new alerts it is helpful to include full links to the
 > automated notebook generating the alert and its HTML output.
 
-See [Jupycron](#jupycron)<sub><sup> </sup></sub>🔧 for details.
+See [Jupycron](#jupycron)&thinsp;🔧 for details.
+
 
 ### Jupycron
 Jupycron is a Python script that runs Jupyter notebooks automatically.
 
 Various notebooks are used to perform analysing, reporting and alarming
 using data science tools that are more powerful than
-[Grafana](#tool:grafana) and [Prometheus](#prometheus)<sub><sup> </sup></sub>🔧 internal
+[Grafana](#tool:grafana) and [Prometheus](#prometheus)&thinsp;🔧 internal
 query language. An example is the use of
 [scikit-learn](https://scikit-learn.org)\'s machine learning for
 predicting incoming measurement flow.
 
 It is internally developed and hosted on
 [github](https://github.com/ooni/jupycron.git). It is deployed by
-[Ansible](#tool:ansible) on [monitoring.ooni.org](#monitoring.ooni.org)<sub><sup> </sup></sub>🖥.
+[Ansible](#tool:ansible) on [monitoring.ooni.org](#monitoring.ooni.org)&thinsp;🖥.
 
 It runs every minute and scans the existing notebooks at
 `/var/lib/jupyter/notebooks/`. It parses only notebooks that have the
@@ -3510,7 +3950,7 @@ Execution intervals can be specified using keywords:
 
 > **note**
 > The `AUTORUN` environment variable is set when a notebook is run under
-> jupycron. Also [Ooniutils microlibrary](#ooniutils-microlibrary)<sub><sup> </sup></sub>💡 sets the
+> jupycron. Also [Ooniutils microlibrary](#ooniutils-microlibrary)&thinsp;💡 sets the
 > `autorun` Python variable to `True`. This can be useful to send alerts
 > only when notebooks are being run automatically.
 
@@ -3520,31 +3960,36 @@ of the existing automated notebooks.
 
 The status column indicates the outcome of the previous run, if any:
 
--   🟢: successful run
+ * 🟢: successful run
 
--   🔴: failed run
+ * 🔴: failed run
 
--   ⌛: never executed before
+ * ⌛: never executed before
 
--   🛇: disabled notebook: the `# jupycron: {…​}` line was not found
+ * 🛇: disabled notebook: the `# jupycron: {…​}` line was not found
 
 > **note**
 > notebooks are executed by `jupyter-nbconvert` under `systemd-run` with
-> memory limits to protect the [monitoring.ooni.org](#monitoring.ooni.org)<sub><sup> </sup></sub>🖥
+> memory limits to protect the [monitoring.ooni.org](#monitoring.ooni.org)&thinsp;🖥
 > host. The limit can be changed by setting a `MaxMem` key in the
 > configuration line, in megabytes.
 
 Debugging tip: Jupycron stores the history of notebook executions in
 `/var/lib/jupyter/notebooks/jupycron/.history.json`.
 
-For an example of automated notebook that sends alarm see [Test helper
-failure rate notebook](#nb:test_helper_failure_rate)
+For an example of automated notebook that sends alarm see
+[Test helper failure rate notebook](#test-helper-failure-rate-notebook)&thinsp;📔
+
+> **note**
+> When a notebook is run automatically by Jupycron only the HTML output is updated.
+> The notebook itself is not.
+
 
 ### Test helper failure rate notebook
 This automated notebook performs a correlation of test failures and the
-location of [Test helpers](#test-helpers)<sub><sup> </sup></sub>⚙.
+location of [Test helpers](#test-helpers)&thinsp;⚙.
 
-It sends alerts directly to [Slack](#slack)<sub><sup> </sup></sub>🔧.
+It sends alerts directly to [Slack](#slack)&thinsp;🔧.
 
 Notebook:
 <https://jupyter.ooni.org/notebooks/notebooks/autorun_test_helper_failure_rate_alarm.ipynb>
@@ -3552,28 +3997,38 @@ Notebook:
 Output:
 <https://jupyter.ooni.org/view/notebooks/jupycron/autorun_test_helper_failure_rate_alarm.html>
 
-Also see [Test helpers notebook](#test-helpers-notebook)<sub><sup> </sup></sub>📔, [Test helper
-rotation runbook](#run:test_helper_rotation) and [Test helpers failure
-runbook](#run:test_helpers)
+Also see the [test helpers notebook](#test-helpers-notebook)&thinsp;📔,
+the [test helper rotation runbook](#test-helper-rotation-runbook)&thinsp;📒 and
+the [test helpers failure runbook](#test-helpers-failure-runbook)&thinsp;📒
+
 
 ### Test helpers notebook
 This notebook provides tables and charts to investigate the general
-status of the [Test helpers](#test-helpers)<sub><sup> </sup></sub>⚙
+status of the [Test helpers](#test-helpers)&thinsp;⚙
+
+It provides a summary of the live and rotated test helpers:
+
+![notebook](../../../assets/images-backend/test_helpers_notebook.png)
 
 See <https://jupyter.ooni.org/notebooks/notebooks/test%20helpers.ipynb>
 for investigation
+
+Also see the [test helper rotation runbook](#test-helper-rotation-runbook)&thinsp;📒 and
+the [test helpers failure runbook](#test-helpers-failure-runbook)&thinsp;📒
+
 
 ### Android probe release notebook
 This automated notebook is used to compare changes in incoming
 measurements across different versions of the Android probe.
 
-It is used in the [Android probe release runbook](#android-probe-release-runbook)<sub><sup> </sup></sub>📒
+It is used in the [Android probe release runbook](#android-probe-release-runbook)&thinsp;📒
 
 Notebook:
 <https://jupyter.ooni.org/notebooks/notebooks/autorun_android_probe_release.ipynb>
 
 Output:
 <https://jupyter.ooni.org/view/notebooks/jupycron/autorun_android_probe_release.html>
+
 
 ### iOS probe release notebook
 This automated notebook is used to compare changes in incoming
@@ -3585,17 +4040,19 @@ Notebook:
 Output:
 <https://jupyter.ooni.org/view/notebooks/jupycron/autorun_ios_probe_release.html>
 
+
 ### CLI probe release notebook
 This automated notebook performs Used to compare changes in incoming
 measurements across different versions of the CLI probe.
 
-It is used in the [CLI probe release runbook](#cli-probe-release-runbook)<sub><sup> </sup></sub>📒
+It is used in the [CLI probe release runbook](#cli-probe-release-runbook)&thinsp;📒
 
 Notebook:
 <https://jupyter.ooni.org/notebooks/notebooks/autorun_cli_probe_release.ipynb>
 
 Output:
 <https://jupyter.ooni.org/view/notebooks/jupycron/autorun_cli_probe_release.html>
+
 
 ### Duplicate test-list URLs notebook
 This automated notebook shows duplicate URLs across global and
@@ -3607,10 +4064,11 @@ Notebook:
 Output:
 <https://jupyter.ooni.org/view/notebooks/jupycron/autorun_duplicate_test_list_urls.html>
 
+
 ### Monitor blocking event detections notebook
-This automated notebook monitor the [Social media blocking event
-detector](#comp:detector) creating a summary table with clickable links
-to events. It also sends notification messages on [Slack](#slack)<sub><sup> </sup></sub>🔧.
+This automated notebook monitor the
+[Social media blocking event detector](#social-media-blocking-event-detector)&thinsp;⚙ creating a summary table with clickable links
+to events. It also sends notification messages on [Slack](#slack)&thinsp;🔧.
 
 Notebook:
 <https://jupyter.ooni.org/notebooks/notebooks/autorun_event_detector_alerts.ipynb>
@@ -3618,9 +4076,10 @@ Notebook:
 Output:
 <https://jupyter.ooni.org/view/notebooks/jupycron/autorun_event_detector_alerts.html>
 
+
 ### Logs from FSN notebook
 This automated notebook provides summaries and examples of log analysis.
-See [ClickHouse instance for logs](#clickhouse-instance-for-logs)<sub><sup> </sup></sub>⚙ for an overview.
+See [ClickHouse instance for logs](#clickhouse-instance-for-logs)&thinsp;⚙ for an overview.
 
 Notebook:
 <https://jupyter.ooni.org/notebooks/notebooks/autorun_fsn_logs.ipynb>
@@ -3628,11 +4087,13 @@ Notebook:
 Output:
 <https://jupyter.ooni.org/view/notebooks/jupycron/autorun_fsn_logs.html>
 
+
 ### Logs investigation notebook
-This notebook provides various examples of log analysis. See [ClickHouse
-instance for logs](#comp:click_log) for an overview.
+This notebook provides various examples of log analysis. See
+[ClickHouse instance for logs](#clickhouse-instance-for-logs)&thinsp;⚙ for an overview.
 
 <https://jupyter.ooni.org/notebooks/notebooks/centralized_logs.ipynb>
+
 
 ### Incoming measurements prediction and alarming notebook
 This automated notebook uses Sklearn to implement predictions of the
@@ -3657,6 +4118,7 @@ An example of measurement flow prediction:
 
 ![prediction](../../../assets/images-backend/autorun_incoming_measurements_prediction_alarming.html.png)
 
+
 ### Incoming measurements prediction-by-country notebook
 This automated notebook is similar to the previous one but evaluates
 each country independently.
@@ -3673,6 +4135,7 @@ Notebook:
 Output:
 <https://jupyter.ooni.org/view/notebooks/jupycron/autorun_incoming_measurements_prediction_alarming_per_country.html>
 
+
 ### Long term measurements prediction notebook
 This automated notebook runs long-term predictions of incoming
 measurement flows and alarms on significant drops.
@@ -3685,6 +4148,7 @@ Notebook:
 
 Output:
 <https://jupyter.ooni.org/view/notebooks/jupycron/autorun_incoming_measurements_prediction_long_term_alarming.html>
+
 
 ### Incoming measurements notebook
 This automated notebook provides a dashboard of incoming measurement
@@ -3699,9 +4163,10 @@ Notebook:
 Output:
 <https://jupyter.ooni.org/view/notebooks/jupycron/autorun_incoming_msmts.html>
 
+
 ### ClickHouse queries notebook
 This is a non-automated notebook used to summarize heavy queries in
-[ClickHouse](#clickhouse)<sub><sup> </sup></sub>⚙
+[ClickHouse](#clickhouse)&thinsp;⚙
 
 <https://jupyter.ooni.org/notebooks/notebooks/2023%20%5Bfederico%5D%20clickhouse%20query%20log.ipynb>
 
@@ -3711,8 +4176,8 @@ This is a non-automated notebook used to summarize heavy queries in
 
 
 ### Priorities and weights notebook
-Notebooks to investigate prioritization. See [Priorities and
-weights](#topic:weights)
+Notebooks to investigate prioritization. See
+[Priorities and weights](#priorities-and-weights)&thinsp;💡
 
 <https://jupyter.ooni.org/notebooks/notebooks/2022%20test-list%20URL%20input%20prioritization%20dashboard.ipynb>
 
@@ -3728,27 +4193,60 @@ The notebook will show how the measurement quantity and coverage increased.
 <https://jupyter.ooni.org/notebooks/notebooks/2023-05-18%20TL%20campaign.ipynb>
 
 
+### Easy charting notebook
+This notebook contains examples that can be used as building blocks for various
+investigations and dashboards.
+
+It provides the `easy_msm_count_chart` helper function.
+Such functions shows measurement counts over time, grouped over a dimension.
+
+By default it shows maximum 6 different values (color bands).
+This means you are not seeing the total amount of measurements in the charts.
+
+You can add the following parameters, all optional:
+- `title`: free-form title
+- `since`: when to start, defaults to "3 months". You can use day, week, month, year
+- `until`: when to stop, defaults to now. You can use day, week, month, year
+- `granularity`: how big is each time slice: day, week, month. Defaults to day
+- `dimension`: what dimension to show as different color bands. Defaults to `software_version`
+- `dimension_limit`: how many values to show as different color bands. **Defaults to 6.**
+
+The following parameters add filtering. The names should be self explanatory.
+The default value is no filter (count everything).
+- `filter_software_name`: looks only at measurement for a given software name, e.g. "ooniprobe-android".
+- `filter_domain`
+- `filter_engine_name`
+- `filter_input`
+- `filter_probe_asn`
+- `filter_probe_cc`
+- `filter_test_name`
+
+<https://jupyter.ooni.org/notebooks/notebooks/easy_charts.ipynb>
+
+
+
 ## Grafana
 Grafana <https://grafana.com/> is a popular platform for monitoring and
 alarming.
 
-It is deployed on [monitoring.ooni.org](#monitoring.ooni.org)<sub><sup> </sup></sub>🖥 by
-[Ansible](#ansible)<sub><sup> </sup></sub>🔧 and lives at <https://grafana.ooni.org/>
+It is deployed on [monitoring.ooni.org](#monitoring.ooni.org)&thinsp;🖥 by
+[Ansible](#ansible)&thinsp;🔧 and lives at <https://grafana.ooni.org/>
 
-See [Grafana backup runbook](#grafana-backup-runbook)<sub><sup> </sup></sub>📒 and [Grafana
-editing](#run:grafana_edit)
+See [Grafana backup runbook](#grafana-backup-runbook)&thinsp;📒 and
+[Grafana editing](#grafana-editing)&thinsp;📒
+
 
 ## ClickHouse instance for logs
 There is an instance of ClickHouse deployed on
-[monitoring.ooni.org](#monitoring.ooni.org)<sub><sup> </sup></sub>🖥 that receives logs. See [Log
-management](#topic:logman) for details on logging in general.
+[monitoring.ooni.org](#monitoring.ooni.org)&thinsp;🖥 that receives logs. See
+[Log management](#log-management)&thinsp;💡 for details on logging in general.
 
-See [Logs from FSN notebook](#logs-from-fsn-notebook)<sub><sup> </sup></sub>📔 and [Logs investigation
-notebook](#nb:logs2) for examples on how to query the `logs` table to
+See [Logs from FSN notebook](#logs-from-fsn-notebook)&thinsp;📔 and
+[Logs investigation notebook](#logs-investigation-notebook)&thinsp;📔 for examples on how to query the `logs` table to
 extract logs and generate charts.
 
 > **note**
-> The `logs` table on [monitoring.ooni.org](#monitoring.ooni.org)<sub><sup> </sup></sub>🖥 is indexed
+> The `logs` table on [monitoring.ooni.org](#monitoring.ooni.org)&thinsp;🖥 is indexed
 > by `__REALTIME_TIMESTAMP`. It can be used for fast ordering and
 > filtering by time.
 
@@ -3763,19 +4261,21 @@ ORDER BY __REALTIME_TIMESTAMP DESC
 LIMIT 10
 ```
 
+
 ## Vector
 Vector <https://vector.dev> is a log (and metric) management tool. See
-[Log management](#log-management)<sub><sup> </sup></sub>💡 for details.
+[Log management](#log-management)&thinsp;💡 for details.
 
 > **important**
 > Vector is not packaged in Debian yet. See
 > <https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1019316> Vector is
 > currently installed using a 3rd party APT archive.
 
+
 ## ClickHouse
 ClickHouse is main database that stores measurements and many other
-tables. It accessed primarily by the [API](#api)<sub><sup> </sup></sub>⚙ and the
-[Fastpath](#fastpath)<sub><sup> </sup></sub>⚙.
+tables. It accessed primarily by the [API](#api)&thinsp;⚙ and the
+[Fastpath](#fastpath)&thinsp;⚙.
 
 It is an OLAP, columnar database. For documentation see
 <https://clickhouse.com/docs/en/intro>
@@ -3783,11 +4283,12 @@ It is an OLAP, columnar database. For documentation see
 The database schema required by the API is stored in:
 <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/tests/integ/clickhouse_1_schema.sql>
 
-ClickHouse is deployed by [Ansible](#ansible)<sub><sup> </sup></sub>🔧 as part of the
+ClickHouse is deployed by [Ansible](#ansible)&thinsp;🔧 as part of the
 deploy-backend.yml playbook. It is installed using an APT archive from
 the developers and
 
-Related: [Database backup tool](#database-backup-tool)<sub><sup> </sup></sub>⚙
+Related: [Database backup tool](#database-backup-tool)&thinsp;⚙
+
 
 ### Overall design
 The backend uses both the native ClickHouse table engine MergeTree and
@@ -3815,8 +4316,8 @@ engine. EmbeddedRocksDB **does not support replication**.
 
 > **important**
 > Some workloads would better suited for a transactional and immediately
-> consistent database. E.g. [OONI Run](#ooni-run)<sub><sup> </sup></sub>🐝 and [Incident
-> management](#api:incidents). See
+> consistent database. E.g. [OONI Run](#ooni-run)&thinsp;🐝 and
+> [Incident management](#incident-management)&thinsp;🐝. See
 > <https://clickhouse.com/docs/en/engines/table-engines/special/keeper-map>
 
 To get an overview of the existing tables and engines use:
@@ -3825,44 +4326,44 @@ To get an overview of the existing tables and engines use:
 
 An overview of the more important tables:
 
--   [accounts table](#accounts-table)<sub><sup> </sup></sub>⛁ EmbeddedRocksDB
+ * [accounts table](#accounts-table)&thinsp;⛁ EmbeddedRocksDB
 
--   [asnmeta table](#asnmeta-table)<sub><sup> </sup></sub>⛁ MergeTree
+ * [asnmeta table](#asnmeta-table)&thinsp;⛁ MergeTree
 
--   [citizenlab table](#citizenlab-table)<sub><sup> </sup></sub>⛁ ReplacingMergeTree
+ * [citizenlab table](#citizenlab-table)&thinsp;⛁ ReplacingMergeTree
 
--   [citizenlab_flip table](#citizenlab_flip-table)<sub><sup> </sup></sub>⛁ ReplacingMergeTree
+ * [citizenlab_flip table](#citizenlab_flip-table)&thinsp;⛁ ReplacingMergeTree
 
--   [counters_asn_test_list table](#counters_asn_test_list-table)<sub><sup> </sup></sub>⛁
+ * [counters_asn_test_list table](#counters_asn_test_list-table)&thinsp;⛁
     MaterializedView
 
--   [counters_test_list table](#counters_test_list-table)<sub><sup> </sup></sub>⛁ MaterializedView
+ * [counters_test_list table](#counters_test_list-table)&thinsp;⛁ MaterializedView
 
--   [fastpath table](#fastpath-table)<sub><sup> </sup></sub>⛁ ReplacingMergeTree
+ * [fastpath table](#fastpath-table)&thinsp;⛁ ReplacingMergeTree
 
--   [fingerprints_dns table](#fingerprints_dns-table)<sub><sup> </sup></sub>⛁ EmbeddedRocksDB
+ * [fingerprints_dns table](#fingerprints_dns-table)&thinsp;⛁ EmbeddedRocksDB
 
--   [fingerprints_dns_tmp table](#fingerprints_dns_tmp-table)<sub><sup> </sup></sub>⛁
+ * [fingerprints_dns_tmp table](#fingerprints_dns_tmp-table)&thinsp;⛁
     EmbeddedRocksDB
 
--   [fingerprints_http table](#fingerprints_http-table)<sub><sup> </sup></sub>⛁ EmbeddedRocksDB
+ * [fingerprints_http table](#fingerprints_http-table)&thinsp;⛁ EmbeddedRocksDB
 
--   [fingerprints_http_tmp table](#fingerprints_http_tmp-table)<sub><sup> </sup></sub>⛁
+ * [fingerprints_http_tmp table](#fingerprints_http_tmp-table)&thinsp;⛁
     EmbeddedRocksDB
 
--   [incidents table](#incidents-table)<sub><sup> </sup></sub>⛁ ReplacingMergeTree
+ * [incidents table](#incidents-table)&thinsp;⛁ ReplacingMergeTree
 
--   [jsonl table](#jsonl-table)<sub><sup> </sup></sub>⛁ MergeTree
+ * [jsonl table](#jsonl-table)&thinsp;⛁ MergeTree
 
--   [msmt_feedback table](#msmt_feedback-table)<sub><sup> </sup></sub>⛁ ReplacingMergeTree
+ * [msmt_feedback table](#msmt_feedback-table)&thinsp;⛁ ReplacingMergeTree
 
--   [oonirun table](#oonirun-table)<sub><sup> </sup></sub>⛁ ReplacingMergeTree
+ * [oonirun table](#oonirun-table)&thinsp;⛁ ReplacingMergeTree
 
--   [session_expunge table](#session_expunge-table)<sub><sup> </sup></sub>⛁ EmbeddedRocksDB
+ * [session_expunge table](#session_expunge-table)&thinsp;⛁ EmbeddedRocksDB
 
--   [test_groups table](#test_groups-table)<sub><sup> </sup></sub>⛁ Join
+ * [test_groups table](#test_groups-table)&thinsp;⛁ Join
 
--   [url_priorities table](#url_priorities-table)<sub><sup> </sup></sub>⛁ CollapsingMergeTree
+ * [url_priorities table](#url_priorities-table)&thinsp;⛁ CollapsingMergeTree
 
 > **note**
 > As ClickHouse does not support transactions, there are some workarounds
@@ -3870,13 +4371,14 @@ An overview of the more important tables:
 
 One way is to use two tables with the same schema, where one table
 receive updates and another one is used for reading, and swap them once
-the writes are completed. This is used by the [API](#api)<sub><sup> </sup></sub>⚙, [Test
-helper rotation](#comp:test_helper_rotation) and other components. The
+the writes are completed. This is used by the [API](#api)&thinsp;⚙,
+[Test helper rotation](#test-helper-rotation)&thinsp;⚙ and other components. The
 SQL syntax is:
 
 ```sql
 EXCHANGE TABLES <a> AND <b>
 ```
+
 
 ### accounts table
 Used for authentication. Assignes roles to accounts (by account id). The
@@ -3898,10 +4400,11 @@ PRIMARY KEY account_id
 
 To create and update account roles see:
 
-[Creating admin API accounts](#creating-admin-api-accounts)<sub><sup> </sup></sub>📒
+[Creating admin API accounts](#creating-admin-api-accounts)&thinsp;📒
+
 
 ### asnmeta table
-Contains [ASN](#asn)<sub><sup> </sup></sub>💡 lookup data used by the API
+Contains [ASN](#asn)&thinsp;💡 lookup data used by the API
 
 Schema:
 
@@ -3920,8 +4423,9 @@ ORDER BY (asn, changed)
 SETTINGS index_granularity = 8192
 ```
 
+
 ### asnmeta_tmp table
-Temporary table, see [asnmeta table](#asnmeta-table)<sub><sup> </sup></sub>⛁
+Temporary table, see [asnmeta table](#asnmeta-table)&thinsp;⛁
 
 Schema:
 
@@ -3965,9 +4469,10 @@ ORDER BY (test_name, input, probe_cc, probe_asn)
 SETTINGS index_granularity = 4
 ```
 
+
 ### citizenlab table
-Contains data from the [CitizenLab URL testing list
-repository](https://github.com/citizenlab/test-lists).
+Contains data from the
+[CitizenLab URL testing list repository](https://github.com/citizenlab/test-lists).
 
 Schema:
 
@@ -3984,14 +4489,14 @@ ORDER BY (domain, url, cc, category_code)
 SETTINGS index_granularity = 4
 ```
 
-Receive writes from [CitizenLab test list
-updater](#comp:citizenlab_test_lists_updater)
+Receive writes from [CitizenLab test list updater](#citizenlab-test-list-updater)&thinsp;⚙
 
-Used by [CitizenLab](#citizenlab)<sub><sup> </sup></sub>🐝
+Used by [CitizenLab](#citizenlab)&thinsp;🐝
+
 
 ### citizenlab_flip table
-Temporary table. See [CitizenLab test list
-updater](#comp:citizenlab_test_lists_updater)
+Temporary table. See [CitizenLab test list updater](#citizenlab-test-list-updater)&thinsp;⚙
+
 
 ### counters_asn_test_list table
 A `MATERIALIZED VIEW` table that, despite the name, is updated
@@ -4000,7 +4505,7 @@ continuously by ClickHouse as new measurements are inserted in the
 
 It contains statistics on the incoming measurement flow, grouped by
 week, `probe_cc`, `probe_asn` and `input`. It is used by
-[Prioritization](#prioritization)<sub><sup> </sup></sub>🐝.
+[Prioritization](#prioritization)&thinsp;🐝.
 
 Schema:
 
@@ -4028,8 +4533,9 @@ WHERE (measurement_start_time < now()) AND (measurement_start_time > (now() - to
 GROUP BY week, probe_cc, probe_asn, input
 ```
 
+
 ### counters_test_list table
-Similar to [counters_asn_test_list table](#counters_asn_test_list-table)<sub><sup> </sup></sub>⛁ -
+Similar to [counters_asn_test_list table](#counters_asn_test_list-table)&thinsp;⛁ -
 the main differences are that this table has daily granularity and does
 not discriminate by `probe_asn`
 
@@ -4058,14 +4564,15 @@ WHERE (measurement_start_time < now()) AND (measurement_start_time > (now() - to
 GROUP BY day, probe_cc, input
 ```
 
+
 ### fastpath table
-This table stores the output of the [Fastpath](#fastpath)<sub><sup> </sup></sub>⚙. It is
+This table stores the output of the [Fastpath](#fastpath)&thinsp;⚙. It is
 usually the largest table in the database and receives the largest
 amount of read and write traffic.
 
-It is used by multiple entry points in the [API](#api)<sub><sup> </sup></sub>⚙, primarily
-for measurement listing and presentation and by the [Aggregation and
-MAT](#api:mat)
+It is used by multiple entry points in the [API](#api)&thinsp;⚙, primarily
+for measurement listing and presentation and by the
+[Aggregation and MAT](#aggregation-and-mat)&thinsp;🐝
 
 Schema:
 
@@ -4114,14 +4621,15 @@ ORDER BY (measurement_start_time, report_id, input, measurement_uid)
 SETTINGS index_granularity = 8192
 ```
 
-See [Fastpath deduplication](#fastpath-deduplication)<sub><sup> </sup></sub>📒 for deduplicating the table
+See [Fastpath deduplication](#fastpath-deduplication)&thinsp;📒 for deduplicating the table
 records.
+
 
 ### fingerprints_dns table
 Stores measurement DNS fingerprints. The contents are used by the
-[Fastpath](#fastpath)<sub><sup> </sup></sub>⚙ to detect `confirmed` measurements.
+[Fastpath](#fastpath)&thinsp;⚙ to detect `confirmed` measurements.
 
-It is updated by the [Fingerprint updater](#fingerprint-updater)<sub><sup> </sup></sub>⚙
+It is updated by the [Fingerprint updater](#fingerprint-updater)&thinsp;⚙
 
 Schema:
 
@@ -4144,14 +4652,16 @@ ENGINE = EmbeddedRocksDB
 PRIMARY KEY name
 ```
 
+
 ### fingerprints_dns_tmp table
-Temporary table. See [Fingerprint updater](#fingerprint-updater)<sub><sup> </sup></sub>⚙
+Temporary table. See [Fingerprint updater](#fingerprint-updater)&thinsp;⚙
+
 
 ### fingerprints_http table
 Stores measurement HTTP fingerprints. The contents are used by the
-[Fastpath](#fastpath)<sub><sup> </sup></sub>⚙ to detect `confirmed` measurements.
+[Fastpath](#fastpath)&thinsp;⚙ to detect `confirmed` measurements.
 
-It is updated by the [Fingerprint updater](#fingerprint-updater)<sub><sup> </sup></sub>⚙
+It is updated by the [Fingerprint updater](#fingerprint-updater)&thinsp;⚙
 
 Schema:
 
@@ -4174,11 +4684,13 @@ ENGINE = EmbeddedRocksDB
 PRIMARY KEY name
 ```
 
+
 ### fingerprints_http_tmp table
-Temporary table. See [Fingerprint updater](#fingerprint-updater)<sub><sup> </sup></sub>⚙
+Temporary table. See [Fingerprint updater](#fingerprint-updater)&thinsp;⚙
+
 
 ### incidents table
-Stores incidents. See [Incident management](#incident-management)<sub><sup> </sup></sub>🐝.
+Stores incidents. See [Incident management](#incident-management)&thinsp;🐝.
 
 Schema:
 
@@ -4211,15 +4723,16 @@ ORDER BY id
 SETTINGS index_granularity = 1
 ```
 
-### jsonl table
-This table provides a method to look up measurements in [JSONL
-files](#topic:jsonl) stored in [S3 data bucket](#s3-data-bucket)<sub><sup> </sup></sub>💡 buckets.
 
-It is written by the [Measurement uploader](#measurement-uploader)<sub><sup> </sup></sub>⚙ when
-[Postcans](#topic:postcans) and [JSONL files](#jsonl-files)<sub><sup> </sup></sub>💡 just after
+### jsonl table
+This table provides a method to look up measurements in
+[JSONL files](#topic:jsonl) stored in [S3 data bucket](#s3-data-bucket)&thinsp;💡 buckets.
+
+It is written by the [Measurement uploader](#measurement-uploader)&thinsp;⚙ when
+[Postcans](#topic:postcans) and [JSONL files](#jsonl-files)&thinsp;💡 just after
 measurements are uploaded to the bucket.
 
-It is used by multiple entry points in the [API](#api)<sub><sup> </sup></sub>⚙, primarily
+It is used by multiple entry points in the [API](#api)&thinsp;⚙, primarily
 by `get_measurement_meta`.
 
 <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/ooniapi/measurements.py#L470>
@@ -4243,8 +4756,9 @@ ORDER BY (report_id, input, measurement_uid)
 SETTINGS index_granularity = 8192
 ```
 
+
 ### msmt_feedback table
-Used for [Measurement feedback](#measurement-feedback)<sub><sup> </sup></sub>🐝
+Used for [Measurement feedback](#measurement-feedback)&thinsp;🐝
 
 Schema:
 
@@ -4262,8 +4776,9 @@ ORDER BY (measurement_uid, account_id)
 SETTINGS index_granularity = 4
 ```
 
+
 ### oonirun table
-Used for [OONI Run](#ooni-run)<sub><sup> </sup></sub>🐝
+Used for [OONI Run](#ooni-run)&thinsp;🐝
 
 Schema:
 
@@ -4286,6 +4801,7 @@ ORDER BY (ooni_run_link_id, descriptor_creation_time)
 SETTINGS index_granularity = 1
 ```
 
+
 ### session_expunge table
 Used for authentication. It stores
 
@@ -4301,9 +4817,10 @@ ENGINE = EmbeddedRocksDB
 PRIMARY KEY account_id
 ```
 
+
 ### obs_openvpn table
-Table used by OpenVPN tests. Written by the [Fastpath](#fastpath)<sub><sup> </sup></sub>⚙
-and read by the [API](#api)<sub><sup> </sup></sub>⚙
+Table used by OpenVPN tests. Written by the [Fastpath](#fastpath)&thinsp;⚙
+and read by the [API](#api)&thinsp;⚙
 
 Schema:
 
@@ -4348,9 +4865,10 @@ ORDER BY (measurement_start_time, report_id, input)
 SETTINGS index_granularity = 8
 ```
 
+
 ### test_groups table
 Contains the definition of test groups. Updated manually and read by the
-[API](#comp:api), mainly to show grouping in [Explorer](#explorer)<sub><sup> </sup></sub>🖱.
+[API](#comp:api), mainly to show grouping in [Explorer](#explorer)&thinsp;🖱.
 
 Schema:
 
@@ -4363,9 +4881,10 @@ CREATE TABLE default.test_groups
 ENGINE = Join(ANY, LEFT, test_name)
 ```
 
+
 ### test_helper_instances table
 List of live, draining and destroyed test helper instances. Used by
-[Test helper rotation](#test-helper-rotation)<sub><sup> </sup></sub>⚙ internally.
+[Test helper rotation](#test-helper-rotation)&thinsp;⚙ internally.
 
 Schema:
 
@@ -4388,12 +4907,13 @@ ORDER BY name
 SETTINGS index_granularity = 8
 ```
 
-### url_priorities table
-This table stores rules to compute priorities for URLs used in [Web
-connectivity test](#test:web_conn).
 
-See [Prioritization](#prioritization)<sub><sup> </sup></sub>🐝, [Prioritization
-management](#api:priomgm) and [Prioritization rules UI](#prioritization-rules-ui)<sub><sup> </sup></sub>🖱
+### url_priorities table
+This table stores rules to compute priorities for URLs used in
+[Web connectivity test](#web-connectivity-test)&thinsp;Ⓣ.
+
+See [Prioritization](#prioritization)&thinsp;🐝,
+[Prioritization management](#api:priomgm) and [Prioritization rules UI](#prioritization-rules-ui)&thinsp;🖱
 
 Schema:
 
@@ -4412,6 +4932,7 @@ ORDER BY (category_code, cc, domain, url, priority)
 SETTINGS index_granularity = 1024
 ```
 
+
 ## ClickHouse system tables
 ClickHouse has many system tables that can be used for monitoring
 performance and debugging.
@@ -4425,6 +4946,7 @@ cause unnecessary I/O load:
     system.query_thread_log*
     system.trace_log*
 
+
 ### Fastpath deduplication
 ClickHouse does not deduplicate all records deterministically for
 performance reasons. Full deduplication can be performed with the
@@ -4433,16 +4955,17 @@ reprocess old measurements. Deduplication is CPU and IO-intensive.
 
     time clickhouse-client -u admin --password admin --receive_timeout 9999 --send_timeout 9999 --query 'OPTIMIZE TABLE fastpath FINAL'
 
+
 ### Dropping tables
 ClickHouse has a protection against table drops. Use this to allow
 dropping a table once. After use the flag file is automatically removed:
 
     sudo touch '/var/lib/clickhouse/flags/force_drop_table' && sudo chmod 666 '/var/lib/clickhouse/flags/force_drop_table'
 
+
 ### Investigating table sizes
 To monitor ClickHouse's performance and table size growth there's a
-[dashboard](#clickhouse-dashboard)<sub><sup> </sup></sub>📊 and the [ClickHouse queries
-notebook](#nb:click_q)
+[dashboard](#dash:clickhouse) and the [ClickHouse queries notebook](#clickhouse-queries-notebook)&thinsp;📔
 
 To investigate table and index sizes the following query is useful:
 
@@ -4465,24 +4988,25 @@ ORDER BY bytes_size DESC
 > The system tables named `asynchronous_metric_log`, `query_log` and
 > `query_thread_log` can be useful for debugging and performance
 > optimization but grow over time and create additional I/O traffic. Also
-> see [ClickHouse system tables](#clickhouse-system-tables)<sub><sup> </sup></sub>💡.
+> see [ClickHouse system tables](#clickhouse-system-tables)&thinsp;💡.
 
 Possible workarounds are:
 
--   Drop old records.
+ * Drop old records.
 
--   Implement sampling writes that write only a percentage of the
+ * Implement sampling writes that write only a percentage of the
     records.
 
--   Disable logging for specific users or queries.
+ * Disable logging for specific users or queries.
 
--   Disable logging in the codebase running the query. See
+ * Disable logging in the codebase running the query. See
     <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/fastpath/fastpath/db.py#L177>
     for an example of custom settings.
 
--   Disable logging altogether.
+ * Disable logging altogether.
 
-Also see [Disable unnecessary ClickHouse system tables](#disable-unnecessary-clickhouse-system-tables)<sub><sup> </sup></sub>🐞
+Also see [Disable unnecessary ClickHouse system tables](#disable-unnecessary-clickhouse-system-tables)&thinsp;🐞
+
 
 ### Investigating database performance
 If needed a simple script can be run to generate additional metrics and
@@ -4505,6 +5029,7 @@ do
   sleep 1
 done
 ```
+
 
 ## Continuous Deployment: Database schema changes
 The database schema required by the API is stored in
@@ -4551,6 +5076,7 @@ install or start time.
 
 Some examples of database schema change workflows:
 
+
 ### Adding a new column to the fastpath
 The following workflow can be tweaked or simplified to add columns or
 tables to other components.
@@ -4577,6 +5103,7 @@ stages.
 This workflow guarantees that the same schema and codebase has been
 tested on all stages before reaching production.
 
+
 ### Renaming a column or table
 This is a more complex workflow especially when multiple components
 access the same table or column. It can also be used for changing a
@@ -4585,25 +5112,26 @@ column type and other invasive changes.
 For each of the following steps ensure the rollout reaches all the CD
 stages.
 
--   Create a new column or table.
+ * Create a new column or table.
 
--   Prepare, code-review, merge and deploy a new version of all the
+ * Prepare, code-review, merge and deploy a new version of all the
     components that write data. Write all data to both the old and new
     column/table.
 
--   If required, run one-off queries that migrate existing data from the
+ * If required, run one-off queries that migrate existing data from the
     old column/table to the new one. Using `IF NOT EXISTS` can be
     useful.
 
--   Prepare, code-review, merge and deploy a new version of all the
+ * Prepare, code-review, merge and deploy a new version of all the
     components that reads data. Update queries to only read from the new
     column/table.
 
--   Prepare, code-review, merge and deploy a new version of all the
+ * Prepare, code-review, merge and deploy a new version of all the
     components that write data. Write data only to the new column/table.
 
--   Run one-off queries to delete the old column/table. Using
+ * Run one-off queries to delete the old column/table. Using
     `IF EXISTS` can be useful for idempotent runs.
+
 
 ### Database schema check
 To compare the database schemas across backend hosts you can use:
@@ -4622,7 +5150,8 @@ done
 
 The generated files can be compared more easily using `meld`.
 
-Also related: [Database backup tool](#database-backup-tool)<sub><sup> </sup></sub>⚙
+Also related: [Database backup tool](#database-backup-tool)&thinsp;⚙
+
 
 # GitHub CI workflows
 There are 5 main workflows that a run by GitHub Actions when new pull
@@ -4634,20 +5163,21 @@ and other variables that can be edited on
 
 The workflow files are:
 
--   .github/workflows/build_deb_packages.yml
+ * .github/workflows/build_deb_packages.yml
 
--   .github/workflows/docgen.yaml
+ * .github/workflows/docgen.yaml
 
--   .github/workflows/mypy.yml
+ * .github/workflows/mypy.yml
 
--   .github/workflows/test_fastpath.yaml
+ * .github/workflows/test_fastpath.yaml
 
--   .github/workflows/test_new_api.yml
+ * .github/workflows/test_new_api.yml
 
 > **warning**
 > the workflows handle sensitive credentials. GitHub provides security
 > features to prevent 3rd party contributors from running CI actions
 > through pull requests that might expose credentials.
+
 
 ## Debian package build and publish
 Builds one or more .deb files from the backend repository and uploads
@@ -4658,23 +5188,32 @@ The configuration file is:
     .github/workflows/build_deb_packages.yml
 
 The workflow installs the required dependencies as Debian packages and
-then fetches the [debops-ci tool](#debops-ci-tool)<sub><sup> </sup></sub>🔧 from the [sysadmin
-repository](https://github.com/ooni/sysadmin/tree/master/tools)
+then fetches the [debops-ci tool](#debops-ci-tool)&thinsp;🔧 from the [sysadmin repository](https://github.com/ooni/sysadmin/tree/master/tools)
+
 
 ### debops-ci tool
 A Python script that automates package builds and CI/CD workflows:
 
--   Detects `debian/` directories in the current repository. It inspects
+ * Detects `debian/` directories in the current repository. It inspects
     file changes tracked by git to identify which projects are being
     modified.
 
--   Bumps up version numbers according to the [package
-    versioning](#topic:pkg_versioning) criteria described below.
+ * Bumps up version numbers according to the [package versioning](#package-versioning)&thinsp;💡 criteria described below.
 
--   Builds Debian packages as needed.
+ * Builds Debian packages as needed.
 
--   Generates a Debian archive on S3. Uploads .deb files into it to make
+ * Generates a Debian archive on S3. Uploads .deb files into it to make
     them available for deployment.
+
+The script has been designed to address the following requirements:
+
+ * Remove dependencies from 3rd party services that might become expensive or be shut down.
+ * Serverless: do not require a dedicated CI/CD server
+ * Stateless: allow the script to run in CI and on developer desktops without requiring a local database, cache etc.
+ * Compatible: generate a package archive that can be used by external users to install ooniprobe on their hosts using standard tooling.
+ * CI-friendly: minimize the amount of data that needs to be deployed on servers to update a backend component or probe.
+ * Reproducible: given the same sources the generated output should be virtually identical across different systems. I.e. it should not depend on other software installed locally.
+
 
 It is used in the CI workflow as:
 
@@ -4682,14 +5221,15 @@ It is used in the CI workflow as:
 ./debops-ci --show-commands ci --bucket-name ooni-internal-deb
 ```
 
+
 #### debops-ci details
 The tool requires the following environment variables for automated ci
 runs:
 
--   `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in order to write to
+ * `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in order to write to
     S3 buckets.
 
--   `DEB_GPG_KEY` or `DEB_GPG_KEY_BASE64` to GPG-sign packages. The
+ * `DEB_GPG_KEY` or `DEB_GPG_KEY_BASE64` to GPG-sign packages. The
     first variable can contain a PEM-encoded private key, while the
     second is base64-encoded.
 
@@ -4748,10 +5288,10 @@ as examples.
 
 The current OONI package archives are:
 
--   <https://ooni-internal-deb.s3.eu-central-1.amazonaws.com/> - for
+ * <https://ooni-internal-deb.s3.eu-central-1.amazonaws.com/> - for
     internal use
 
--   <http://deb.ooni.org/> also available as <https://deb.ooni.org/> -
+ * <http://deb.ooni.org/> also available as <https://deb.ooni.org/> -
     for publicly available packages
 
 Documentation on how to use the public archive:
@@ -4771,6 +5311,7 @@ transactional file uploads, a pair of lockfiles are used, named
 > refuse to overwrite the .deb package already present on S3. This is
 > expected.
 
+
 ### Package versioning
 The CI workflows builds Debian packages with the following versioning
 scheme:
@@ -4783,14 +5324,13 @@ For example:
 
 This format has the benefits of:
 
--   Providing a user-configured [semantic
-    versioning](https://semver.org/) part.
+ * Providing a user-configured [semantic versioning](https://semver.org/) part.
 
--   Automatically inserting a pull request number. This prevents version
+ * Automatically inserting a pull request number. This prevents version
     conflicts in case the first component has not been updated when
     opening a new pull request.
 
--   Automatically inserting an incremental build number. This allows
+ * Automatically inserting an incremental build number. This allows
     incremental deployments of commits on testbeds.
 
 Once a package at a given version is uploaded the CI tool will refuse to
@@ -4810,18 +5350,19 @@ done incrementally.
 
 For example:
 
--   Pull request 751 builds a package versioned 1.0.79\~pr751-14. The
+ * Pull request 751 builds a package versioned 1.0.79\~pr751-14. The
     package is deployed on the testbed.
 
--   Pull request 752, opened later, is rebased on top of 751 and builds
+ * Pull request 752, opened later, is rebased on top of 751 and builds
     a package versioned 1.0.80\~pr752-51. The package is deployed on the
     testbed.
 
--   The need to reorder the two PRs arises. PR 751 is now rebased on top
+ * The need to reorder the two PRs arises. PR 751 is now rebased on top
     of 752. The changelog file is manually updated to version 1.0.81 The
     CI now generates 1.0.81\~pr751-43 and the packa
 
-See the subchapter on the [The deployer tool](#the-deployer-tool)<sub><sup> </sup></sub>🔧
+See the subchapter on the [The deployer tool](#the-deployer-tool)&thinsp;🔧
+
 
 ## Code documentation generation
 The configuration lives at:
@@ -4838,6 +5379,7 @@ The outputs is lives at <https://ooni.github.io/backend/>
 
 At the time of writing it is superseded by the present document.
 
+
 ## Mypy
 The configuration lives at:
 
@@ -4845,6 +5387,7 @@ The configuration lives at:
 
 It runs mypy to check Python typing and makes the CI run fail if errors
 are detected.
+
 
 ## Fastpath test
 The configuration lives at:
@@ -4864,6 +5407,7 @@ The CI action creates a dedicated container and installs the required
 dependencies as Debian packages. It provides a code coverage report in
 HTML format.
 
+
 ## API end-to-end test
 The configuration lives at:
 
@@ -4872,18 +5416,18 @@ The configuration lives at:
 This CI action performs the most comprehensive test of the backed. In
 sequence:
 
--   Creates a dedicated container and installs the required dependencies
+ * Creates a dedicated container and installs the required dependencies
     as Debian packages.
 
--   It starts a ClickHouse container
+ * It starts a ClickHouse container
 
--   Creates the required database tables, see
+ * Creates the required database tables, see
     <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/tests/integ/clickhouse_1_schema.sql>
 
--   Initializes the database tables with test data, see
+ * Initializes the database tables with test data, see
     <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/tests/integ/clickhouse_2_fixtures.sql>
 
--   Runs the fastpath against data from a bucket on S3 in order to
+ * Runs the fastpath against data from a bucket on S3 in order to
     populate the `fastpath` table with real data. The measurements come
     from both:
 
@@ -4891,7 +5435,7 @@ sequence:
 
     -   Recent data
 
--   It runs unit, functional and integration tests against the API.
+ * It runs unit, functional and integration tests against the API.
     Integration tests require the API to run queries against multiple
     tables in ClickHouse.
 
@@ -4909,19 +5453,21 @@ sequence:
 > **note**
 > To implement precise functional tests, mock out the database.
 
-# Miscellaneous scripts running on FSN or ams-pg-test
+
 # Incident response
+
 ## On-call preparation
-Review [Alerting](#alerting)<sub><sup> </sup></sub>💡 and check [Grafana
-dashboards](#topic:dashboards)
+Review [Alerting](#alerting)&thinsp;💡 and check
+[Grafana dashboards](#grafana-dashboards)&thinsp;💡
 
 On Android devices the following apps can be used:
 
--   [Slack](#slack)<sub><sup> </sup></sub>🔧 app with audible notifications from the
+ * [Slack](#slack)&thinsp;🔧 app with audible notifications from the
     #ooni-bots channel
 
--   [Grafana](#grafana)<sub><sup> </sup></sub>🔧 viewer
+ * [Grafana](#grafana)&thinsp;🔧 viewer
     <https://play.google.com/store/apps/details?id=it.ksol.grafanaview>
+
 
 ## Redundant notifications
 If needed, a secondary channel for alert notification can be set up
@@ -4936,8 +5482,9 @@ notify the outcome of CI runs from
 An Android app is available:
 <https://f-droid.org/en/packages/io.heckel.ntfy/>
 
-[Grafana](#grafana)<sub><sup> </sup></sub>🔧 can be configured to send alerts to ntfy.sh
+[Grafana](#grafana)&thinsp;🔧 can be configured to send alerts to ntfy.sh
 using a webhook.
+
 
 ## Test helper rotation runbook
 This runbook provides hints to troubleshoot the rotation of test
@@ -4946,15 +5493,13 @@ and their TLS certificates might be at risk of expiring.
 
 Steps:
 
-1.  Review [Test helpers](#test-helpers)<sub><sup> </sup></sub>⚙, [Test helper
-    rotation](#comp:test_helper_rotation) and [Test helpers
-    notebook](#nb:test_helpers)
+1.  Review [Test helpers](#comp:test_helpers), [Test helper rotation](#comp:test_helper_rotation) and [Test helpers notebook](#test-helpers-notebook)&thinsp;📔
 
-2.  Review the charts on [Test helpers dashboard](#test-helpers-dashboard)<sub><sup> </sup></sub>📊.
+2.  Review the charts on [Test helpers dashboard](#test-helpers-dashboard)&thinsp;📊.
     Look at different timespans:
 
     a.  The uptime of the test helpers should be staggered by a week
-        depending on [Test helper rotation](#test-helper-rotation)<sub><sup> </sup></sub>⚙.
+        depending on [Test helper rotation](#test-helper-rotation)&thinsp;⚙.
 
 3.  A summary of the live and last rotated test helper can be obtained
     with:
@@ -4968,7 +5513,7 @@ SELECT rdn, dns_zone, name, region, draining_at FROM test_helper_instances ORDER
     in the DNS rotating many test helpers too quickly can impact the
     probes.
 
-    a.  Log on [backend-fsn.ooni.org](#backend-fsn.ooni.org)<sub><sup> </sup></sub>🖥
+    a.  Log on [backend-fsn.ooni.org](#backend-fsn.ooni.org)&thinsp;🖥
 
     b.  Check the last run using
         `sudo systemctl status ooni-rotation.timer`
@@ -4977,8 +5522,9 @@ SELECT rdn, dns_zone, name, region, draining_at FROM test_helper_instances ORDER
 
     d.  Run `sudo systemctl restart ooni-rotation` and monitor the logs.
 
-5.  Review the charts on [Test helpers dashboard](#test-helpers-dashboard)<sub><sup> </sup></sub>📊
+5.  Review the charts on [Test helpers dashboard](#test-helpers-dashboard)&thinsp;📊
     during and after the rotation.
+
 
 ## Test helpers failure runbook
 This runbook presents a scenario where a test helper is causing probes
@@ -4989,37 +5535,35 @@ other issues affecting the test helpers.
 It has been chosen because such kind of incidents can impact the quality
 of measurements and can be relatively difficult to troubleshoot.
 
-For investigating glitches in the test [Test helper
-rotation](#comp:test_helper_rotation) see [Test helper rotation
-runbook](#run:test_helper_rotation).
+For investigating glitches in the
+[test helper rotation](#test-helper-rotation)&thinsp;⚙ see
+[test helper rotation runbook](#test-helper-rotation-runbook)&thinsp;📒.
 
 In this scenario either an alert has been sent to the
-[#ooni-bots](#topic:oonibots) [Slack](#slack)<sub><sup> </sup></sub>🔧 channel by [Test
-helper failure rate notebook](#nb:test_helper_failure_rate) or something
-else caused the investigation. See [Alerting](#alerting)<sub><sup> </sup></sub>💡 for
-details.
+[#ooni-bots](#topic:oonibots) [Slack](#slack)&thinsp;🔧 channel by
+the [test helper failure rate notebook](#test-helper-failure-rate-notebook)&thinsp;📔 or something
+else caused the investigation.
+See [Alerting](#alerting)&thinsp;💡 for details.
 
 Steps:
 
-1.  Review [Test helpers](#test-helpers)<sub><sup> </sup></sub>⚙
+1.  Review [Test helpers](#test-helpers)&thinsp;⚙
 
-2.  Review the charts on [Test helpers dashboard](#test-helpers-dashboard)<sub><sup> </sup></sub>📊.
+2.  Review the charts on [Test helpers dashboard](#test-helpers-dashboard)&thinsp;📊.
     Look at different timespans:
 
     a.  The uptime of the test helpers should be staggered by a week
-        depending on [Test helper rotation](#test-helper-rotation)<sub><sup> </sup></sub>⚙.
+        depending on [Test helper rotation](#test-helper-rotation)&thinsp;⚙.
 
     b.  The in-flight requests and requests per second should be
-        consistent across hosts, except for `0.th.ooni.org`. See [Test
-        helpers list](#api:test_helpers) for details.
+        consistent across hosts, except for `0.th.ooni.org`. See
+        [Test helpers list](#test-helpers-list)&thinsp;🐝 for details.
 
     c.  Review CPU load, memory usage and run duration percentiles.
 
-3.  Review [Test helper failure rate
-    notebook](#nb:test_helper_failure_rate)
+3.  Review [Test helper failure rate notebook](#test-helper-failure-rate-notebook)&thinsp;📔
 
-4.  For more detailed investigation there is also a [test helper
-    notebook](https://jupyter.ooni.org/notebooks/notebooks/2023%20%5Bfederico%5D%20test%20helper%20metadata%20in%20fastpath.ipynb)
+4.  For more detailed investigation there is also a [test helper notebook](https://jupyter.ooni.org/notebooks/notebooks/2023%20%5Bfederico%5D%20test%20helper%20metadata%20in%20fastpath.ipynb)
 
 5.  Log on the hosts using
     `ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -Snone root@0.th.ooni.org`
@@ -5034,7 +5578,7 @@ Steps:
     for rotation. ⚠️ Due to the propagation time of changes in the DNS
     rotating many test helpers too quickly can impact the probes.
 
-    a.  Log on [backend-fsn.ooni.org](#backend-fsn.ooni.org)<sub><sup> </sup></sub>🖥
+    a.  Log on [backend-fsn.ooni.org](#backend-fsn.ooni.org)&thinsp;🖥
 
     b.  Check the last run using
         `sudo systemctl status ooni-rotation.timer`
@@ -5043,11 +5587,11 @@ Steps:
 
     d.  Run `sudo systemctl restart ooni-rotation` and monitor the logs.
 
-9.  Review the charts on [Test helpers dashboard](#test-helpers-dashboard)<sub><sup> </sup></sub>📊
+9.  Review the charts on [Test helpers dashboard](#test-helpers-dashboard)&thinsp;📊
     during and after the rotation.
 
 Query to be run against ClickHouse on
-[monitoring.ooni.org](#monitoring.ooni.org)<sub><sup> </sup></sub>🖥:
+[monitoring.ooni.org](#monitoring.ooni.org)&thinsp;🖥:
 
 ``` sql
 SELECT message FROM logs
@@ -5056,12 +5600,255 @@ ORDER BY __REALTIME_TIMESTAMP DESC
 LIMIT 10
 ```
 
-See [Selecting test helper for rotation](#selecting-test-helper-for-rotation)<sub><sup> </sup></sub>🐞
+See [Selecting test helper for rotation](#selecting-test-helper-for-rotation)&thinsp;🐞
+
+
+## Measurement drop tutorial
+This tutorial provides examples on how to investigate a drop in measurements.
+It is based on an incident where a drop in measurement was detected and the cause was not immediately clear.
+
+It is not meant to be a step-by-step runbook but rather give hints on what data to look for, how to generate charts and identify the root cause of an incident.
+
+A dedicated issue can be used to track the incident and the investigation effort and provide visibility:
+https://github.com/ooni/sysadmin/blob/master/.github/ISSUE_TEMPLATE/incident.md
+The issue can be filed during or after the incident depending on urgency.
+
+Some of the examples below come from
+https://jupyter.ooni.org/notebooks/notebooks/android_probe_release_msm_drop_investigation.ipynb
+During an investigation it can be good to create a dedicated Jupyter notebook.
+
+We started with reviewing:
+
+ * <https://jupyter.ooni.org/view/notebooks/jupycron/autorun_android_probe_release.html>
+   No issues detected as the charts show a short timespan.
+ * The charts on [Test helpers dashboard](#test-helpers-dashboard)&thinsp;📊.
+   No issues detected here.
+ * The [API and fastpath](#api-and-fastpath)&thinsp;📊 dashboard.
+   No issues detected here.
+ * The [Long term measurements prediction notebook](#long-term-measurements-prediction-notebook)&thinsp;📔
+   The decrease was clearly showing.
+
+Everything looked OK in terms of backend health. We then generated the following charts.
+
+The chunks of Python code below are meant to be run in
+[Jupyter Notebook](#jupyter-notebook)&thinsp;🔧 and are mostly "self-contained".
+To be used you only need to import the
+[Ooniutils microlibrary](#ooniutils-microlibrary)&thinsp;💡:
+
+``` python
+%run ooniutils.ipynb
+```
+
+The "t" label is commonly used on existing notebooks to refer to hour/day/week time slices.
+
+We want to plot how many measurements we are receiving from Ooniprobe Android in unattended runs, grouped by day and by `software_version`.
+
+The last line generates an area chart using Altair. Notice that the `x` and `y` and `color` parameters match the 3 columns extracted by the `SELECT`.
+
+The `GROUP BY` is performed on 2 of those 3 columns, while `COUNT(*)` is counting how many measurements exist in each t/software_version "bucket".
+
+The output of the SQL query is just a dataframe with 3 columns. There is no need to pivot or reindex it as Altair does the data transformation required.
+
+> **note**
+> Altair refuses to process dataframes with more than 5000 rows.
+
+``` python
+x = click_query("""
+    SELECT
+      toStartOfDay(toStartOfWeek(measurement_start_time)) AS t,
+      software_version,
+      COUNT(*) AS msm_cnt
+    FROM fastpath
+    WHERE measurement_start_time > today() - interval 3 month
+    AND measurement_start_time < today()
+    AND software_name = 'ooniprobe-android-unattended'
+    GROUP BY t, software_version
+""")
+alt.Chart(x).mark_area().encode(x='t', y='msm_cnt', color='software_version').properties(width=1000, height=200, title="Android unattended msm cnt")
+```
+
+The generated chart was:
+
+![chart](../../../assets/images-backend/msm_drop_investigation_1.png)
+
+From the chart we concluded that the overall number of measurements have been decreasing since the release of a new version.
+We also re-ran the plot by filtering on other `software_name` values and saw no other type of probe was affected.
+
+> **note**
+> Due to a limitation in Altair, when grouping time by week use
+> `toStartOfDay(toStartOfWeek(measurement_start_time)) AS t`
+
+Then we wanted to measure how many measurements are being collected during each `web_connectivity` test run.
+This is to understand if probes are testing less measurements in each run.
+
+The following Python snippet uses nested SQL queries. The inner query groups measurements by time, `software_version` and `report_id`,
+and counts how many measurements are related to each `report_id`.
+The outer query "ignores" the `report_id` value and `quantile()` is used to extract the 50 percentile of `msm_cnt`.
+
+> **note**
+> The use of double `%%` in `LIKE` is required to escape the `%` wildcard. The wildcard is used to match any amount of characters.
+
+``` python
+x = click_query("""
+    SELECT
+        t,
+        quantile(0.5)(msm_cnt) AS msm_cnt_p50,
+        software_version
+    FROM (
+        SELECT
+            toStartOfDay(toStartOfWeek(measurement_start_time)) AS t,
+            software_version,
+            report_id,
+            COUNT(*) AS msm_cnt
+        FROM fastpath
+        WHERE measurement_start_time > today() - interval 3 month
+        AND test_name = 'web_connectivity'
+        AND measurement_start_time < today()
+        AND software_name = 'ooniprobe-android-unattended'
+        AND software_version LIKE '3.8%%'
+        GROUP BY t, software_version, report_id
+    ) GROUP BY t, software_version
+""")
+alt.Chart(x).mark_line().encode(x='t', y='msm_cnt_p50', color='software_version').properties(width=1000, height=200, title="Android unattended msmt count per report")
+```
+
+We also compared different version groups and different `software_name`.
+The output shows that indeed the number of measurements for each run is significantly lower for the newly released versions.
+
+![chart](../../../assets/images-backend/msm_drop_investigation_4.png)
+
+To update the previous Python snippet to group measurements by a different field, change `software_version` into the new column name.
+For example use `probe_cc` to show a chart with a breakdown by probe country name. You should change `software_version` once in each SELECT part,
+then in the last two `GROUP BY`, and finally in the `color` line at the bottom.
+
+We did such change to confirm that all countries were impacted in the same way. (The output is not included here as not remarkable)
+
+Also, `mark_line` on the bottom line is used to create line charts. Switch it to `mark_area` to generate *stacked* area charts.
+See the previous two charts as examples.
+
+We implemented a change to the API to improve logging the list of tests returned at check-in: <https://github.com/ooni/backend/pull/781>
+and reviewed monitored the logs using `sudo journalctl -f -u ooni-api`.
+
+The output showed that the API is very often returning 100 URLs to probes.
+
+We then ran a similar query to extract the test duration time by calculating
+`MAX(measurement_start_time) - MIN(measurement_start_time) AS delta` for each `report_id` value:
+
+``` python
+x = click_query("""
+    SELECT t, quantile(0.5)(delta) AS deltaq, software_version
+    FROM (
+        SELECT
+            toStartOfDay(toStartOfWeek(measurement_start_time)) AS t,
+            software_version,
+            report_id,
+            MAX(measurement_start_time) - MIN(measurement_start_time) AS delta
+        FROM fastpath
+        WHERE measurement_start_time > today() - interval 3 month
+        AND test_name = 'web_connectivity'
+        AND measurement_start_time < today()
+        AND software_name = 'ooniprobe-android-unattended'
+        AND software_version LIKE '3.8%%'
+        GROUP BY t, software_version, report_id
+    ) GROUP BY t, software_version
+""")
+alt.Chart(x).mark_line().encode(x='t', y='deltaq', color='software_version').properties(width=1000, height=200, title="Android unattended test run time")
+```
+
+![chart](../../../assets/images-backend/msm_drop_investigation_2.png)
+
+The chart showed that the tests are indeed running for a shorter amount of time.
+
+> **note**
+> Percentiles can be more meaningful then averages.
+> To calculate quantiles in ClickHouse use `quantile(<fraction>)(<column_name>)`.
+
+Example:
+
+``` sql
+quantile(0.1)(delta) AS deltaq10
+```
+
+Wondering if the slowdown was due to slower measurement execution or other issues, we also generated a table as follows.
+
+> **note**
+> Showing color bars allows to visually inspect tables more quickly. Setting the axis value to `0`, `1` or `None` helps readability:
+> `y.style.bar(axis=None)`
+
+Notice the `delta / msmcnt AS seconds_per_msm` calculation:
+
+``` python
+y = click_query("""
+    SELECT
+        quantile(0.1)(delta) AS deltaq10,
+        quantile(0.3)(delta) AS deltaq30,
+        quantile(0.5)(delta) AS deltaq50,
+        quantile(0.7)(delta) AS deltaq70,
+        quantile(0.9)(delta) AS deltaq90,
+
+        quantile(0.5)(seconds_per_msm) AS seconds_per_msm_q50,
+        quantile(0.5)(msmcnt) AS msmcnt_q50,
+
+    software_version, software_name
+    FROM (
+        SELECT
+            software_version, software_name,
+            report_id,
+            MAX(measurement_start_time) - MIN(measurement_start_time) AS delta,
+            count(*) AS msmcnt,
+            delta / msmcnt AS seconds_per_msm
+        FROM fastpath
+        WHERE measurement_start_time > today() - interval 3 month
+        AND test_name = 'web_connectivity'
+        AND measurement_start_time < today()
+        AND software_name IN ['ooniprobe-android-unattended', 'ooniprobe-android']
+        AND software_version LIKE '3.8%%'
+        GROUP BY software_version, report_id, software_name
+    ) GROUP BY software_version, software_name
+    ORDER by software_version, software_name ASC
+""")
+y.style.bar(axis=None)
+```
+
+![chart](../../../assets/images-backend/msm_drop_investigation_3.png)
+
+In the table we looked at the `seconds_per_msm_q50` column: the median time for running each test did not change significantly.
+
+To summarize:
+ * The backend appears to deliver the same amount of URLs to the Probes as usual.
+ * The time required to run each test is rougly the same.
+ * Both the number of measurements per run and the run time decreased in the new releases.
+
+
+## Weekly measurements review runbook
+On a daily or weekly basis the following dashboards and Jupyter notebooks can be reviewed to detect unexpected patterns in measurements focusing on measurement drops, slowdowns or any potential issue affecting the backend infrastructure.
+
+When browsing the dashboards expand the time range to one year in order to spot long term trends.
+Also zoom in to the last month to spot small glitches that could otherwise go unnoticed.
+
+Review the [API and fastpath](#api-and-fastpath)&thinsp;📊 dashboard for the production backend host[s] for measurement flow, CPU and memory load,
+timings of various API calls, disk usage.
+
+Review the [Incoming measurements notebook](#incoming-measurements-notebook)&thinsp;📔 for unexpected trends.
+
+Quickly review the following dashboards for unexpected changes:
+
+ * [Long term measurements prediction notebook](#long-term-measurements-prediction-notebook)&thinsp;📔
+ * [Test helpers dashboard](#test-helpers-dashboard)&thinsp;📊
+ * [Test helper failure rate notebook](#test-helper-failure-rate-notebook)&thinsp;📔
+ * [Database backup dashboard](#database-backup-dashboard)&thinsp;📊
+ * [GeoIP MMDB database dashboard](#geoip-mmdb-database-dashboard)&thinsp;📊
+ * [GeoIP dashboard](#geoip-mmdb-database-dashboard)&thinsp;📊
+ * [Fingerprint updater dashboard](#fingerprint-updater-dashboard)&thinsp;📊
+ * [ASN metadata updater dashboard](#asn-metadata-updater-dashboard)&thinsp;📊
+
+Also check <https://jupyter.ooni.org/view/notebooks/jupycron/summary.html>
+
 
 ## Grafana backup runbook
 This runbook describes how to back up dashboards and alarms in Grafana.
 It does not include backing up datapoints stored in
-[Prometheus](#prometheus)<sub><sup> </sup></sub>🔧.
+[Prometheus](#prometheus)&thinsp;🔧.
 
 The Grafana SQLite database can be dumped by running:
 
@@ -5069,13 +5856,13 @@ The Grafana SQLite database can be dumped by running:
 sqlite3 -line /var/lib/grafana/grafana.db '.dump' > grafana_dump.sql
 ```
 
-Future implementation is tracked in: [Implement Grafana dashboard and
-alarms backup](https://github.com/ooni/backend/issues/770)
+Future implementation is tracked in:
+[Implement Grafana dashboard and alarms backup](#implement-grafana-dashboard-and-alarms-backup)&thinsp;🐞
 
 
 ## Grafana editing
 This runbook describes adding new dashboards, panels and alerts in
-[Grafana](#grafana)<sub><sup> </sup></sub>🔧
+[Grafana](#grafana)&thinsp;🔧
 
 To add a new dashboard use this
 <https://grafana.ooni.org/dashboard/new?orgId=1>
@@ -5090,6 +5877,7 @@ metrics like:
 
     avg_over_time(netdata_disk_backlog_milliseconds_average{instance="$host:19999"}[$avgspan])
 
+
 ### Managing Grafana alert rules
 Alert rules can be listed at <https://grafana.ooni.org/alerting/list>
 
@@ -5100,6 +5888,7 @@ Click the arrow on the left to expand each alerting rule.
 
 The list shows:
 
+![editing_alerts](../../../assets/images-backend/grafana_alerts_editing.png)
 
 > **note**
 > When creating alerts it can be useful to add full URLs linking to
@@ -5110,18 +5899,21 @@ To stop notifications create a \"silence\" either:
 1.  by further expanding an alert rule (see below) and clicking the
     \"Silence\" button
 
-2.  by inputting it in inhttps://grafana.ooni.org/alerting/silences
+2.  by inputting it in <https://grafana.ooni.org/alerting/silences>
 
 Screenshot:
 
+![adding_silence](../../../assets/images-backend/grafana_alerts_silence.png)
+
 Additionally, the \"Show state history\" button is useful especially
 with flapping alerts.
+
 
 ## Geolocation script
 The following script can be used to compare the geolocation reported by
 the probes submitting measurements compared to the geolocation of the
 `/24` subnet the probe is coming from. It is meant to be run on
-[backend-fsn.ooni.org](#backend-fsn.ooni.org)<sub><sup> </sup></sub>🖥.
+[backend-fsn.ooni.org](#backend-fsn.ooni.org)&thinsp;🖥.
 
 ``` python
 #!/usr/bin/env python3
@@ -5195,6 +5987,7 @@ if __name__ == "__main__":
     main()
 ```
 
+
 ## Test list prioritization monitoring
 The following script monitors prioritized test list for changes in URLs
 for a set of countries. Outputs StatsS metrics.
@@ -5254,15 +6047,98 @@ if __name__ == "__main__":
     main()
 ```
 
+## Recompressing postcans on S3
+The following script can be used to compress .tar.gz files in the S3 data bucket.
+It keeps a copy of the original files locally as a backup.
+It terminates once a correctly compressed file is found.
+Running the script on an AWS host close to the S3 bucket can significantly
+speed up the process.
+
+Tested with the packages:
+
+  * python3-boto3  1.28.49+dfsg-1
+  * python3-magic  2:0.4.27-2
+
+Set the ACCESS_KEY and SECRET_KEY environment variables.
+Update the PREFIX variable as needed.
+
+```python
+#!/usr/bin/env python3
+from os import getenv, rename
+from sys import exit
+import boto3
+import gzip
+import magic
+
+BUCKET_NAME = "ooni-data-eu-fra-test"
+# BUCKET_NAME = "ooni-data-eu-fra"
+PREFIX = "raw/2021"
+
+def fetch_files():
+    s3 = boto3.client(
+        "s3",
+        aws_access_key_id=getenv("ACCESS_KEY"),
+        aws_secret_access_key=getenv("SECRET_KEY"),
+    )
+    cont_token = None
+    while True:
+        kw = {} if cont_token is None else dict(ContinuationToken=cont_token)
+        r = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=PREFIX, **kw)
+        cont_token = r.get("NextContinuationToken", None)
+        for i in r.get("Contents", []):
+            k = i["Key"]
+            if k.endswith(".tar.gz"):
+                fn = k.rsplit("/", 1)[-1]
+                s3.download_file(BUCKET_NAME, k, fn)
+                yield k, fn
+        if cont_token is None:
+            return
+
+def main():
+    s3res = session = boto3.Session(
+        aws_access_key_id=getenv("ACCESS_KEY"),
+        aws_secret_access_key=getenv("SECRET_KEY"),
+    ).resource("s3")
+    for s3key, fn in fetch_files():
+        ft = magic.from_file(fn)
+        if "tar archive" not in ft:
+            print(f"found {ft} at {s3key}")
+            # continue   # simply ignore already compressed files
+            exit()      # stop when compressed files are found
+        tarfn = fn[:-3]
+        rename(fn, tarfn)  # keep the local file as a backup
+        with open(tarfn, "rb") as f:
+            inp = f.read()
+            comp = gzip.compress(inp, compresslevel=9)
+        ratio = len(inp) / len(comp)
+        del inp
+        print(f"uploading {s3key}   compression ratio {ratio}")
+        obj = s3res.Object(BUCKET_NAME, s3key)
+        obj.put(Body=comp)
+        del comp
+
+main()
+```
+
 # Github issues
+
 ## Selecting test helper for rotation
 See <https://github.com/ooni/backend/issues/721>
+
 
 ## Document Tor targets
 See <https://github.com/ooni/backend/issues/761>
 
+
 ## Disable unnecessary ClickHouse system tables
 See <https://github.com/ooni/backend/issues/779>
 
+
 ## Feed fastpath from JSONL
 See <https://github.com/ooni/backend/issues/778>
+
+
+## Implement Grafana dashboard and alarms backup
+See <https://github.com/ooni/backend/issues/770>
+
+
