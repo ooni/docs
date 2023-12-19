@@ -55,9 +55,16 @@ const formatBackendDocs = async() => {
 
     mkdirp(path.join(REPO_ROOT, "src", "assets", "images-backend"))
 
-    const docsOrig = fs.readFileSync(
+    let docsOrig = fs.readFileSync(
         path.join(DOCS_ROOT, "backend", "backend-documentation-main", "backend_documentation.md")
     ).toString()
+
+    docsOrig = docsOrig.split("\n").map((row) => {
+      if (row.startsWith("#")) {
+        return "#" + row
+      }
+      return row
+    }).join("\n")
 
     let docsText = "---\ntitle: Backend documentation\n---\n"
     docsText += docsOrig.replace(/\(images\//g, "(../../../assets/images-backend/")
