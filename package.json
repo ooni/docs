@@ -6,6 +6,7 @@
     "dev": "astro dev",
     "start": "node run.mjs",
     "build": "astro check && astro build",
+    "build-static": "astro check && astro build --config astro.config.static.mjs",
     "build-vercel": "astro check && astro build --config astro.config.vercel.mjs",
     "preview": "astro preview",
     "astro": "astro",
