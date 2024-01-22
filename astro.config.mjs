@@ -1,33 +1,24 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
-import node from '@astrojs/node';
+import vercel from '@astrojs/vercel/static';
 
 // https://astro.build/config
 export default defineConfig({
-  output: 'hybrid',
-  adapter: node({
-    mode: 'middleware'
-  }),
+  output: 'static',
+  adapter: vercel(),
 	integrations: [
 		starlight({
 			title: 'OONI Docs',
 			social: {
-				github: 'https://github.com/withastro/starlight',
+				github: 'https://github.com/ooni/docs',
 			},
 			sidebar: [
 				{
-					label: 'Guides',
-					items: [
-						// Each item here is one entry in the navigation menu.
-						{ label: 'Example Guide', link: '/guides/example/' },
-					],
-				},
-				{
-					label: 'Reference',
-					autogenerate: { directory: 'reference' },
+					label: 'Backend',
+					autogenerate: { directory: 'backend' },
 				},
 			],
-      expressiveCode: false
+            expressiveCode: false
 		}),
 	],
 });
