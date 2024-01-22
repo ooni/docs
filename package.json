@@ -6,7 +6,7 @@
     "dev": "astro dev",
     "start": "node run.mjs",
     "build": "astro check && astro build",
-    "build-vercel": "astro check && astro build",
+    "build-vercel": "npx playwright install && astro check && astro build",
     "preview": "astro preview",
     "astro": "astro"
   },
