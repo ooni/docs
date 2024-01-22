@@ -6,11 +6,9 @@
     "dev": "astro dev",
     "start": "node run.mjs",
     "build": "astro check && astro build",
-    "build-static": "astro check && astro build --config astro.config.static.mjs",
-    "build-vercel": "astro check && astro build --config astro.config.vercel.mjs",
+    "build-vercel": "astro check && astro build",
     "preview": "astro preview",
-    "astro": "astro",
-    "sync-docs": "node src/scripts/sync.js"
+    "astro": "astro"
   },
   "dependencies": {
     "@astrojs/check": "^0.3.1",
