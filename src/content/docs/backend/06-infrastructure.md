@@ -1,7 +1,8 @@
 ---
 title: Infrastructure
 slug: backend/infrastructure
-order: 6
+sidebar:
+    order: 6
 ---
 ## Infrastructure
 This part describes tools used to manage the infrastructure.

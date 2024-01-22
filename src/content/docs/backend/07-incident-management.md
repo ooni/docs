@@ -1,7 +1,8 @@
 ---
 title: Incident Management
 slug: backend/incident-management
-order: 7
+sidebar:
+    order: 7
 ---
 
 ## Incident response

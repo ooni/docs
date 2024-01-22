@@ -1,7 +1,8 @@
 ---
-title: Application Monitoring, Metrics and Alerting
+title: Monitoring and Alerts
 slug: backend/monitoring
-order: 5
+sidebar:
+    order: 5
 ---
 
 ## Application metrics

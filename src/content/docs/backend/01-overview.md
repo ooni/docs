@@ -2,7 +2,7 @@
 title: Overview
 slug: backend
 sidebar:
-  order: 0
+    order: 0
 ---
 This document describes the architecture of the main components of the
 OONI infrastructure.

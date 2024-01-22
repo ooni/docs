@@ -2,7 +2,7 @@
 title: System Architecture
 slug: backend/architecture
 sidebar:
-  order: 2
+    order: 2
 ---
 
 The backend infrastructure performs multiple functions:
