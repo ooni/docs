@@ -23,27 +23,29 @@ The backend infrastructure performs multiple functions:
   The rectangles represent processes. The ellipses represent data at rest:
   as files on disk, files on S3 or records in database tables.
 
-```mermaid
-graph LR
-    Probes[Probes] --> APIProbeServices[API: Probe services]
-    APIProbeServices --> Fastpath[Fastpath]
-    Fastpath --> DBFastpathTbl[DB fastpath tbl]
-    DBFastpathTbl --> APIMeasurements[API: Measurements]
-    APIMeasurements --> Explorer[Explorer]
+  ![Diagram](https://kroki.io/blockdiag/svg/eNrFlD1PwzAQhvf-CstdSTOwFYEEKkgMSJUQU4Uqf5wbU8c2_kCVEP-d2E3SlrZjQzbfG_t9fL47qgxbc0lW6HuEOAgSVVj6ilhAt8iZqDlwajY3IzR3hoJHC2aUcY2Ix0JA8-ErVDkQKVKFYP20LFcyVJFOmKlLY7QsKWFr0LzghsUadCBBGl1SZWhZE6k7fXmgT2o-ttkTvzf2jxvb-ILbB0j2QmQZv16jD2-0wmjR4YNS0nq4IF92LIRULWSisMYHRvSgHK1nCzF72KYCBfof6QiEKuhJBPHBklANDtMZ7_Nw6dfoM0KEQVGSbbG1zRhvTSkTDg6fKOYLYtRAfHSQYkXsEDLQU5urgYG6J0oQ_YAp7hC-nz9Pt2vkwX1J1vRXFnagaXVUXv3el91V253d_MDpvmfP3y-Q_rA-Vzm0GzSn3Q4fuN3RDYVj8aBZj7v3vMdJ1D9__fwCHdgDSg==)
 
-    APIProbeServices --> DiskQueue[disk queue]
-    DiskQueue --> APIUploader[API: uploader]
-    APIUploader --> S3Jsonl[S3 jsonl]
-    S3Jsonl --> APIMeasurements
+<!--
+  blockdiag {
+    default_shape = roundedbox;
+    Probes [color = "#ffeeee", href = "@@probes"];
+    Explorer [color = "#eeeeff"];
+    "S3 jsonl" [shape = ellipse, href = "@@jsonl-files"];
+    "S3 postcan" [shape = ellipse, href = "@@postcans"];
+    "DB jsonl tbl" [shape = ellipse, href = "@@jsonl-table"];
+    "DB fastpath tbl" [shape = ellipse, href = "@@fastpath-table"];
+    "disk queue" [shape = ellipse, href = "@@disk-queue"];
+    "Uploader" [color = "#eeeeff", href = "@@measurement-uploader"];
+    "Fastpath" [color = "#eeeeff", href = "@@fastpath"];
 
-    Uploader[Uploader] --> S3Postcan[S3 postcan]
-    Uploader --> DBJsonlTbl[DB jsonl tbl]
-    DBJsonlTbl --> APIMeasurements
-    DiskQueue --> APIMeasurements
-
-    class Probes,Explorer,Uploader colorBox
-    class S3Jsonl,S3Postcan,DBJsonlTbl,DBFastpathTbl ellipse
-```
+    Probes -> "API: Probe services" -> "Fastpath" -> "DB fastpath tbl" -> "API: Measurements" -> "Explorer";
+    "API: Probe services" -> "disk queue" -> "API: uploader" -> "S3 jsonl" -> "API: Measurements";
+    "Uploader" -> "S3 postcan";
+    "Uploader" -> "DB jsonl tbl";
+    "DB jsonl tbl" -> "API: Measurements";
+    "disk queue" -> "API: Measurements";
+  }
+-->
 
 Ellipses represent data; rectangles represent processes. Click on the
 image and then click on each shape to see related documentation.

@@ -1,9 +1,15 @@
 ---
-title: Introduction and Overview
-slug: backend/introduction
+title: Overview
+slug: backend
 sidebar:
-  order: 1
+  order: 0
 ---
+This document describes the architecture of the main components of the
+OONI infrastructure.
+
+How to develop, test, deploy and monitor them.
+
+The documentation is meant for core contributors.
 
 ## Conventions
   A few shorthands used in the document:
