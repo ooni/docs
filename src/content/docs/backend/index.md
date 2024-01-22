@@ -102,7 +102,7 @@ following button on the top-right menu provides a table of content:
 
   ![Diagram](https://kroki.io/blockdiag/svg/eNrFlD1PwzAQhvf-CstdSTOwFYEEKkgMSJUQU4Uqf5wbU8c2_kCVEP-d2E3SlrZjQzbfG_t9fL47qgxbc0lW6HuEOAgSVVj6ilhAt8iZqDlwajY3IzR3hoJHC2aUcY2Ix0JA8-ErVDkQKVKFYP20LFcyVJFOmKlLY7QsKWFr0LzghsUadCBBGl1SZWhZE6k7fXmgT2o-ttkTvzf2jxvb-ILbB0j2QmQZv16jD2-0wmjR4YNS0nq4IF92LIRULWSisMYHRvSgHK1nCzF72KYCBfof6QiEKuhJBPHBklANDtMZ7_Nw6dfoM0KEQVGSbbG1zRhvTSkTDg6fKOYLYtRAfHSQYkXsEDLQU5urgYG6J0oQ_YAp7hC-nz9Pt2vkwX1J1vRXFnagaXVUXv3el91V253d_MDpvmfP3y-Q_rA-Vzm0GzSn3Q4fuN3RDYVj8aBZj7v3vMdJ1D9__fwCHdgDSg==)
 
-  ```blockdiag
+<!--
   blockdiag {
     default_shape = roundedbox;
     Probes [color = "#ffeeee", href = "@@probes"];
@@ -122,7 +122,7 @@ following button on the top-right menu provides a table of content:
     "DB jsonl tbl" -> "API: Measurements";
     "disk queue" -> "API: Measurements";
   }
-```
+-->
 
 Ellipses represent data; rectangles represent processes. Click on the
 image and then click on each shape to see related documentation.
@@ -161,11 +161,10 @@ arbitrarily delete or alter measurements and that we score them as
 accessible/anomaly/confirmed/failure in a predictable and transparent
 way.
 
-::: note
-  The only exceptions were due to privacy breaches that required removal
-of the affected measurements from the [S3 data bucket](#s3-data-bucket)&thinsp;💡
-  bucket.
-  :::
+> **important**
+> The only exceptions were due to privacy breaches that required removal
+> of the affected measurements from the [S3 data bucket](#s3-data-bucket)&thinsp;💡
+> bucket.
 
   As such, the backend infrastructure is
   [FOSS](https://en.wikipedia.org/wiki/Free_and_open-source_software) and
@@ -174,6 +173,24 @@ of the affected measurements from the [S3 data bucket](#s3-data-bucket)&thinsp;�
 
   Incoming measurements are minimally altered by the
   [Measurement uploader](#measurement-uploader)&thinsp;⚙ and uploaded to S3.
+
+
+### Supply chain management
+
+The backend implements software supply chain management by installing components and libraries from the Debian Stable archive.
+
+This provides the following benefits:
+
+ * Receiving targeted security updates from the OS without introducing breaking changes.
+ * Protection against supply chain attacks.
+ * Reproducible deployment for internal use (e.g. testbeds and new backend hosts) and for external researchers.
+
+> **warning**
+> [ClickHouse](#clickhouse)&thinsp;⚙ is installed from a 3rd party archive and receives limited security support. As a mitigation an LTS version is used yet the support time is 1 year.
+
+The backend received a security assessment from Cure53 <https://cure53.de/> in 2022.
+
+Low-criticality hosts e.g. the monitoring stack also have components installed from 3rd party archives.
 
 
 ## Application metrics
@@ -188,6 +205,19 @@ of the affected measurements from the [S3 data bucket](#s3-data-bucket)&thinsp;�
   Application metrics data flow:
 
   ![Diagram](https://kroki.io/blockdiag/svg/eNq9kc1qAyEUhffzFDLZNnGf0EBX7SoEkl0p4arXUaJe8QcKpe9eZ9Imkz5AXHo-OcdzhCN5VhYG9tUxhRqqK6dsICJ7ZolqUKgEfW469hKjsxKKpcDeJTlKjegXWmM7_UcjdlgUFJiro6Z1_8RMQj3emFJiXnM-2GKqWEnynChYLkCeMailIlk9hjL5cOFIcA82_OmnO33l1SJcTKcA-0Qei8GaH5shXn2nGK8JNIQH9zBcTKcA86mW29suDgS60T23d1ndjda4eX1X9O143B_-t9vg309uuu8fUvvJ0Q==)
+
+<!--
+blockdiag {
+ default_shape = roundedbox;
+ Application [color = "#ffeeee"];
+ Netdata [color = "#eeeeff", href = "@@netdata"];
+ Prometheus [color = "#eeeeff", href = "@@prometheus"];
+ Grafana [color = "#eeeeff", href = "@@grafana"];
+ Application -> Netdata [label = "statsd"];
+ Netdata -> Prometheus [label = "HTTPS"];
+ Prometheus -> Grafana;
+}
+-->
 
   Ellipses represent data; rectangles represent processes. Purple
   components belong to the backend. Click on the image and then click on
@@ -287,6 +317,7 @@ netdata_statsd_timer_citizenlab_test_lists_updater_update_citizenlab_table_milli
 Metrics for the [Database backup tool](#database-backup-tool)&thinsp;⚙.
 See the [Database backup dashboard](#database-backup-dashboard)&thinsp;📊 on Grafana:
 
+```
 netdata_statsd_db_backup_run_export_timer_milliseconds_average
 netdata_statsd_db_backup_status_gauge_value_average
 netdata_statsd_db_backup_table_fastpath_backup_time_ms_gauge_value_average
@@ -300,9 +331,6 @@ netdata_statsd_gauge_db_backup_uploaded_bytes_tot_value_average
 netdata_statsd_timer_db_backup_run_backup_milliseconds_average
 netdata_statsd_timer_db_backup_run_export_milliseconds_average
 netdata_statsd_timer_db_backup_upload_to_s3_milliseconds_average
-
-
-```
 netdata_statsd_gauge_db_backup_status_value_average
 netdata_statsd_gauge_db_backup_table_citizenlab_byte_count_value_average
 netdata_statsd_gauge_db_backup_table_fastpath_backup_time_ms_value_average
@@ -442,6 +470,19 @@ Most of the metrics are collected by scraping Prometheus endpoints,
 Netdata, and using node exporter. The web UI is accessible at
 <https://prometheus.ooni.org>
 
+#### Blackbox exporter
+Blackbox exporter is part of Prometheus. It's a daemon that performs HTTP
+probing against other hosts without relying on local agents (hence the name Blackbox)
+and feeds the generated datapoints into Promethous.
+
+See <https://github.com/prometheus/blackbox_exporter>
+
+It is deployed by
+[Ansible](#tool:ansible) on the [monitoring.ooni.org](#monitoring.ooni.org)&thinsp;🖥
+
+See
+[Updating Blackbox Exporter runbook](#updating-blackbox-exporter-runbook)&thinsp;📒
+
 
 ### Grafana dashboards
 There is a number of dashboards on [Grafana](#grafana)&thinsp;🔧 at
@@ -476,7 +517,32 @@ Alert flow:
 
 ![Diagram](https://kroki.io/blockdiag/svg/eNp1jUEKwjAQRfc9xTBd9wSioBtxV3ApIpNmYktjJiQpCuLdTbvQIDirP7zH_8pKN-qBrvCsQLOhyaZL7MkzrCHI5DRrJY9VBW2QG6eepwinTqyELGDN-YzBcxb2gQw5-kOxFnFDoyRFLBVjZmlRioVm86nLEY-WuhG27QGXt6z6YvIef4dmugtyjxwye70BaPFK1w==)
 
+<!--
+blockdiag {
+ default_shape = roundedbox;
+ Prometheus [color = "#eeeeff"];
+ Grafana [color = "#eeeeff"];
+ "#ooni-bots" [color = "#ffeeee"];
+ Prometheus -> Grafana -> "Slack API" -> "#ooni-bots" -> "Slack app";
+ "#ooni-bots" -> "Browser";
+}
+-->
+
 The diagram does not explicitly include alertmanager. It is part of Prometheus and receives alerts and routes them to Slack.
+
+More detailed diagram:
+
+```mermaid
+flowchart LR
+    P(Prometheus) -- datapoints --> G(Grafana)
+    G --> A(Alertmanager)
+    A --> S(Slack API) --> O(#ooni-bots)
+    P --> A
+    O --> R(Browser / apps)
+    J(Jupyter notebook) --> A
+    classDef box fill:#eeffee,stroke:#777,stroke-width:2px;
+    class P,G,A,S,O,R,J box;
+```
 
 In the diagram Prometheus receives, stores and serves datapoints and has some alert rules to trigger alerts.
 Grafana acts as a UI for Prometheus and also triggers alerts based on alert rules configured in Grafana itself.
@@ -497,7 +563,8 @@ See [Grafana editing](#grafana-editing)&thinsp;📒 and
 There are also many dashboards and alerts configured in
 [Jupyter Notebook](#jupyter-notebook)&thinsp;🔧. These are meant for metrics that require more
 complex algorithms, predictions and SQL queries that cannot be
-implemented using [Grafana](#grafana)&thinsp;🔧.
+implemented using [Grafana](#grafana)&thinsp;🔧 e.g. when using machine learning or Pandas.
+See [Ooniutils microlibrary](#ooniutils-microlibrary)&thinsp;💡 for details.
 
 On many dashboards you can set the averaging timespan and the target
 hostname using fields on the top left.
@@ -693,6 +760,26 @@ monitoring.ooni.org using [Vector](#vector)&thinsp;🔧.
 
 ![Diagram](https://kroki.io/blockdiag/svg/eNrFks9qwzAMxu95CpNel_gYWOlgDEqfYJdRiv_IiYltBccphdF3n5yyNellt01H6ZO_nyxJh6rXVrTss2AajJhcOo2dGIDtWMQpaNASL9uCvQ6Ds0oki4FVL-wdVMJYjUCKuEhEUGDPt9QbNfQHnEZ46P9Q6DCSQ7kxBijKIynWTy40WWFM-cS6CGaXU11Kw_jMeWtTN8laoeeIwXIpVE_tlUY1eQhptuPSoeRe2PBdP63qtdeb8-y9xPgZ5N9A7t_3xwwqG3fZOHMUrKVDGPKBUCzWuF1vjIivD-LfboLCCQkuT-EJmcQ2tHWmrzG25U1yn71p9vumKWen6xdypu8x)
 
+<!--
+blockdiag {
+ default_shape = roundedbox;
+ Application -> Vector-sender -> Vector-receiver -> ClickHouse;
+ Application [color = "#ffeeee"];
+ Vector-sender [color = "#eeeeff", href= = "@@vector"];
+ Vector-receiver [color = "#eeeeff", href= = "@@vector"];
+ ClickHouse [color = "#eeeeff", href= = "@@clickhouse"];
+
+ group {
+    Application; Vector-sender;
+ }
+
+ group {
+    Vector-receiver -> ClickHouse;
+    label = "monitoring.ooni.org";
+    color = "#77FF77";
+ }
+}
+-->
 There is a dedicated ClickHouse instance on monitoring.ooni.org used to
 collect logs. See the [ClickHouse instance for logs](#clickhouse-instance-for-logs)&thinsp;⚙.
 This is done to avoid adding unnecessary load to the production database
@@ -1177,6 +1264,9 @@ This entry point provides a list of test helpers to the probes:
 > amount requests per second they receive should be consistent across
 > hosts, except for `0.th.ooni.org`.
 
+`0.th.ooni.org` is treated differently from other test helpers:
+it receives less traffic to allow testing new releases with lower impact.
+
 See
 <https://github.com/ooni/backend/blob/86c6c7e1d297fb8361a162f6081e5e138731e492/api/ooniapi/probe_services.py#L480>
 
@@ -1303,6 +1393,24 @@ For changing prioritization rules see
 
 ![Diagram](https://kroki.io/blockdiag/svg/eNrNU01Lw0AUvPdXLOnVNPeKgkiEgmixvYmE_XjbLN3sC7svIoj_3axpY0MTb6J7nZllZpgnLMq9MnzH3mdMgeaNpSKUvAZ2xTw2ToES-HY5Y8nao4CQsGeJFn0LJ3OtoX3JS4Q1D1RzKhlxYaGlHX8Ba00d4IKVHnSUlUR1WGbZzlDZiIXEKkN0JhNc7sGpVKFsKnDEyaDLhEWRVdy4I14M8EWl5rL1SeBDwYMrCAIV1gRKOyNf5hpvi9ob9IYMhD-wODRwam3c_D_r72a9WjIPEswrsCpUNJhBHIHWHfPuMIMxwi9GOK7vxG6se8pmt2WWXo9Hs1yAjZr142Y72UBUn8QdEX2jkXt2Ib1i9bDJn7bjdxSVkxvpf-AN4c976rMeeumlm_w-v92eFRf5_cn3ZFmC3KfGRfrHJwZAcmE=)
 
+<!--
+blockdiag {
+ default_shape = roundedbox;
+ "Probes" [color = "#ffeeee"];
+ "fastpath table" [shape = ellipse, href = "@@counters_asn_test_list-table"];
+ "url_priorities table" [shape = ellipse, href = "@@url_priorities-table"];
+ "counters_asn_test_list" [shape = ellipse, href = "@@counters_asn_test_list-table"];
+ "API: receive msmt" [color = "#eeeeff"];
+ "Fastpath" [color = "#eeeeff", href = "@@fastpath"];
+ "API: prio" [color = "#eeeeff"];
+ Probes -> "API: receive msmt" [label = "POST"];
+ "API: receive msmt" -> "Fastpath" [label = "POST"];
+ "Fastpath" -> "fastpath table" [label = "INSERT"];
+ "fastpath table" -> "counters_asn_test_list" [label = "auto"];
+ "counters_asn_test_list" -> "API: prio" [label = "SELECT"];
+ "API: prio" -> "Probes" [label = "check-in"];
+}
+-->
 Ellipses represent data; rectangles represent processes. Purple
 components belong to the backend. Click on the image and then click on
 each shape to see related documentation.
@@ -1678,6 +1786,23 @@ flowchart LR
 
 ![Diagram](https://kroki.io/blockdiag/svg/eNq1kctqwzAQRff-isHZNhFpdg0tdNldoMsQgh7jWLGkUfWAlNJ_rxwS1y54WW0kzbnM444wJDul-Qm-KlDY8GzSMbbcIzxDoOwUKkGXbQX1-wbOkZypYX8XoDHaRzzcsKeYJHdxRqF07OAjY8YZwTU9JC7MjGIXSGCEvctWYEBV6LqPv-7eJsHHB2gDNuVVtyn5-MTYSac2i5Uky4icZoLLDp1aKpLZoks8aXJMGBLMcu3u_DjhK6sW3Ou6r5m9Ia4wTApv_rFwsSPQ5bMeGbF8uY5erom55T9017Nhc-O2b2DY2V82Xsa2-vVekqHQD7hoGiyn7-f7B2qbw7M=)
 
+<!--
+blockdiag {
+ default_shape = roundedbox;
+ "S3 jsonl" [shape = ellipse];
+ "S3 postcans" [shape = ellipse];
+ "disk queue" [shape = ellipse];
+ "jsonl table" [shape = ellipse];
+ Probes [numbered = 1];
+ API [numbered = 2, href = "@@api"];
+ uploader [numbered = 3, href = "@@haproxy"];
+ Probes -> API -> "disk queue" -> uploader -> "S3 jsonl";
+ uploader -> "S3 postcans";
+ uploader -> "jsonl table";
+
+ Probes [color = "#ffeeee"];
+}
+-->
 Ellipses represent data; rectangles represent processes. Click on the
 image and then click on each shape to see related documentation.
 
@@ -1812,6 +1937,8 @@ troubleshooting.
 
 The address of the test helpers are provided to the probes by the API in
 [Test helpers list](#test-helpers-list)&thinsp;🐝.
+`0.th.ooni.org` is treated differently from other test helpers.
+
 
 
 ### Analysis
@@ -1826,6 +1953,32 @@ Deployed using the [analysis package](#analysis-package)&thinsp;📦
 Data flows from various updaters:
 
 ![Diagram](https://kroki.io/blockdiag/svg/eNrFVF1LwzAUfd-vCN2rW94VhaGoAxmF7W3IuGlu17A0N6SpiuJ_t1tXSLuOobDZt_vRc87N_RCako1UsGZfAyYxhVL7VZGBRXbLHJVGohT0cTNg0WQ-Yw4tRWx0V1ulleDR1Q4oTI4emAehceeaxNP2f8sGGLVWtsDXbfgJaRoHwLUt6d1oAtmg8zdwXCvBiYwCq0KCEKGX4l559YnmBUTAEzhbdQT-g1IOgE7R7RG6aVcsc5hWdpR5b4trztfKZ6UYJ5TvKuQCkg0aOZKUlDkaD16R4UKT4Dko08RXrfg4l8OkJtcgRjX5TtLDbM5SZdbo7Jh5oS8qaU_slPHFSpoiFPYIhbfgs0rQ-fgbjpoxUBOMQ8vdGojDt6u8je4_IT4vFvGvIXtHrQfpvxq7RQ8727kHF5S1Z26NWW8vlglpclsNQ6y-NI26-3sqtXUFj-QcHrRjYPG0L3bOl6oOaXcNL8kfbub3D9DuO-g=)
+
+<!--
+blockdiag {
+ default_shape = roundedbox;
+ "ASN repo" -> "ASN updater" -> "asnmeta table" -> API;
+ "ASN repo" [shape = ellipse];
+ "GeoIP repo" -> "GeoIP downloader" -> "/var/lib/ooniapi" -> API;
+ "GeoIP repo" [shape = ellipse];
+ "CitizenLab repo" -> "CitizenLab updater" -> "CitizenLab table" -> API;
+ "CitizenLab repo" [shape = ellipse];
+ "CitizenLab table" [shape = ellipse, href = "@@citizenlab-table"];
+ "DNS fingerp. tbl" [shape = ellipse, href = "@@fingerprints_dns-table"];
+ "Fastpath" [href = "@@fastpath"];
+ "Fingerprints repo" -> "Fingerprints updater" -> "DNS fingerp. tbl" -> Fastpath;
+ "Fingerprints repo" -> "Fingerprints updater" -> "HTTP fingerp. tbl" -> Fastpath;
+ "Fingerprints repo" [shape = ellipse];
+ "HTTP fingerp. tbl" [shape = ellipse, href = "@@fingerprints_http-table"];
+ "asnmeta table" [shape = ellipse, href = "@@asnmeta-table"];
+ "Fingerprints updater" [color = "#eeeeff"];
+ "CitizenLab updater" [color = "#eeeeff"];
+ "ASN updater" [color = "#eeeeff"];
+ "GeoIP downloader" [color = "#eeeeff"];
+ "API" [color = "#eeeeff", href = "@@api"];
+ "Fastpath" [color = "#eeeeff", href = "@@fastpath"];
+}
+-->
 
 Ellipses represent data; rectangles represent processes. Purple
 components belong to the backend. Click on the image and then click on
@@ -2371,19 +2524,15 @@ same major+minor version is used across the team.
 
 Secrets are stored in vaults using the `ansible/vault` script as a
 wrapper for `ansible-vault`. Store encrypted variables with a `vault_`
-prefix to make world \[a more grepable
-place\](<http://docs.ansible.com/ansible/playbooks_best_practices.html#best-practices-for-variables-and-vaults>)
+prefix to allow using grep: <http://docs.ansible.com/ansible/playbooks_best_practices.html#best-practices-for-variables-and-vaults>
 and link location of the variable using same name without prefix in
-corresponding `vars.yml`. `scripts/ansible-syntax-check` checks links
-between vaults and plaintext files during Travis build. `ansible/play`
-wrapper for `ansible-playbook` will execute a playbook with proper vault
-secret and inventory.
+corresponding `vars.yml`.
 
 In order to access secrets stored inside of the vault, you will need a
 copy of the vault password encrypted with your PGP key. This file should
 be stored inside of `~/.ssh/ooni-sysadmin.vaultpw.gpg`.
 
-<https://github.com/ooni/sysadmin/blob/master/ansible/roles/base-bookworm/meta/main.yml>
+The file should be provided by other teammates and GPG-encrypted for your own GPG key.
 
 
 #### SSH Configuration
@@ -2455,6 +2604,21 @@ close as possible to the ansible step that deploys a service. For
 example:
 <https://github.com/ooni/sysadmin/blob/master/ansible/roles/base-bookworm/tasks/main.yml#L110>
 
+> **note**
+> Ansible announces its runs on [ooni-bots](##ooni-bots)&thinsp;💡 unless running with `-C`.
+
+#### The root account
+
+Runbooks use ssh to log on the hosts using your own account and leveraging `sudo` to act as root.
+
+The only exception is when a new host is being deployed - in that case ansible will log in as root to create
+individual accounts and lock out the root user.
+
+When running the entire runbook ansible might try to run it as root.
+This can be avoided by selecting only the required tags using `-t <tagname>`.
+
+Ideally the root user should be disabled after succesfully creating user accounts.
+
 
 #### Roles layout
 Ansible playbooks use multiple roles (see
@@ -2514,6 +2678,9 @@ flowchart LR
         style X fill:#eeffee
 ```
 
+> **note**
+> When deploying files or updating files already existing on the hosts it can be useful to add a note e.g. "Deployed by ansible, see <role_name>".
+> This helps track down how files on the host were modified and why.
 
 ### Creating new playbooks runbook
 This runbook describe how to add new runbooks or modify existing runbooks to support new hosts.
@@ -2560,7 +2727,7 @@ It includes:
 
  * [Vector](#tool:vector) (see [Log management](#log-management)&thinsp;💡)
 
- * local [Netdata](#netdata)&thinsp;🔧, Blackbox exporter etc.
+ * local [Netdata](#tool:netdata), [Blackbox exporter](#blackbox-exporter)&thinsp;🔧, etc
 
  * [Prometheus](#prometheus)&thinsp;🔧 at <https://prometheus.ooni.org>
 
@@ -2588,11 +2755,41 @@ Steps:
     review the output
 
 
+#### Updating Blackbox Exporter runbook
+This runbook describes updating [Blackbox exporter](#blackbox-exporter)&thinsp;🔧.
+
+The `blackbox_exporter` role in ansible is pulled in by the `deploy-monitoring.yml`
+runbook.
+
+The configuration file is at `roles/blackbox_exporter/templates/blackbox.yml.j2`
+together with `host_vars/monitoring.ooni.org/vars.yml`.
+
+To add a simple HTTP[S] check, for example, you can copy the "ooni website" block.
+
+Edit it and run the deployment of the monitoring stack as described in the previous subchapter.
+
+
 ### Etckeeper
 Etckeeper <https://etckeeper.branchable.com/> is deployed on backend
 hosts and keeps the `/etc` directory under git version control. It
 commits automatically on package deployment and on timed runs. It also
 allows doing commits manually.
+
+To check for history of the /etc directory:
+
+```bash
+sudo -i
+cd /etc
+git log --raw
+```
+
+And `git diff` for unmerged changes.
+
+Use `etckeeper commit <message>` to commit changes.
+
+:::tip
+Etckeeper commits changes automatically when APT is used or on daily basis, whichever comes first.
+:::
 
 
 ### Team credential repository
@@ -5468,6 +5665,99 @@ On Android devices the following apps can be used:
  * [Grafana](#grafana)&thinsp;🔧 viewer
     <https://play.google.com/store/apps/details?id=it.ksol.grafanaview>
 
+### Tiers and severities
+
+When designing architecture of backend components or handling incidents it can be useful to have
+defined severities and tiers.
+
+A set of guidelines are described at <https://google.github.io/building-secure-and-reliable-systems/raw/ch16.html#establish_severity_and_priority_models>
+This section presets a simplified approach to prioritizing incident response.
+
+In this case there is no distinction between severity and priority. Impact and response time are connected.
+
+Incidents and alarms from monitoring can be classified by severity levels based on their impact:
+
+ - 1: Serious security breach or data loss; serious loss of privacy impacting users or team members; legal risks.
+ - 2: Downtime impacting service usability for a significant fraction of users; Serious security vulnerability.
+      Examples: probes being unable to submit measurements
+ - 3: Downtime or poor performance impacting secondary services; anything that can cause a level 2 event if not addressed within 24h; outages of monitoring infrastructure
+ - 4: Every other event that requires attention within 7 days
+
+Based on the set of severities, components can be classified in tier as follows:
+
+ - tier 1: Anything that can cause a severity 1 (or less severe) event.
+ - tier 2: Anything that can cause a severity 2 (or less severe) event but not a severity 1.
+ - tier 3: Anything that can cause a severity 3 (or less severe) event but not a severity 1 or 2.
+ - ...and so on
+
+#### Relations and dependencies between services
+
+Tiers are useful during design and deployment as a way to minimize risk of outages and avoid unexpected cascading failures.
+
+Having a low tier value should not be treated as a sign of "importance" for a component, but a liability.
+
+Pre-production deployment stages (e.g. testbed) have tier level >= 5
+
+In this context a component can be a service as a whole, or a running process (daemon), a host, a hardware device, etc.
+A component can contain other components.
+
+A component "A" is said to "hard depend" on another component "B" if an outage of B triggers an outage of A.
+
+It can also "soft depend" on another component if an outage of the latter triggers only a failure of a subsystem, or an ancillary feature or a reasonably short downtime.
+
+Regardless of tiers, components at a higher stage, (e.g. production) cannot depend and/or receive data from lower stages. The opposite is acceptable.
+
+Components can only hard-depend on other components at the same tier or with lower values.
+E.g. a Tier 2 component can depend on a Tier 1 but not the other way around.
+If it happens, the Tier 2 component should be immediatly re-classified as Tier 1 and treated accordingly (see below).
+
+E.g. anything that handles real-time failover for a service should be treated at the same tier (or lower value) as the service.
+
+Redundant components follow a special rule. For example, the "test helper" service provided to the probes, as a whole, should be considered tier 2 at least,
+as it can impact all probes preventing them from running tests succesfully.
+Yet, test helper processes and VMs can be considered tier 3 or even 4 if they sit behind a load balancer that can move traffic away from a failing host reliably
+and with no significant downtime.
+
+Example: An active/standby database pair provides a tier 2 service. An automatic failover tool is triggered by a simple monitoring script.
+Both have to be labeled tier 2.
+
+
+#### Handling incidents
+
+Depending on the severity of an event a different workflow can be followed.
+
+An example of incident management workflow can be:
+
+| Severity | Response time | Requires conference call | Requires call leader | Requires postmortem | Sterile |
+| -------- | ------- | ------ | -------- | ------- | ------ |
+| 1 | 2h | Yes | Yes | Yes | Yes |
+| 2 | 8h | Yes | No | Yes | Yes |
+| 3 | 24h | No | No | No | Yes |
+| 4 | 7d | No | No | No | No |
+
+The term "sterile" is named after <https://en.wikipedia.org/wiki/Sterile_flight_deck_rule> - during the investigation the only priority should be to solve the issue at hand.
+Other investigations, discussions, meetings should be postponed.
+
+When in doubt around the severity of an event, always err on the safe side.
+
+
+#### Regular operations
+
+Based on the tier of a component, development and operation can follow different rules.
+
+An example of incident management workflow can be:
+
+| Tier | Require architecture review | Require code review | Require 3rd party security review | Require Change Management |
+| -------- | ------- | ------ | -------- | ------- |
+| 1 | Yes | Yes | Yes | Yes |
+| 2 | Yes | Yes | No | No |
+| 3 | No | Yes | No | No |
+| 4 | No | No | No | No |
+
+"Change Management" refers to planning operational changes in advance and having team members review the change to be deployed in advance.
+
+E.g. scheduling a meeting to perform a probe release, have 2 people reviewing the metrics before and after the change.
+
 
 ### Redundant notifications
 If needed, a secondary channel for alert notification can be set up
@@ -5590,8 +5880,30 @@ Steps:
 9.  Review the charts on [Test helpers dashboard](#test-helpers-dashboard)&thinsp;📊
     during and after the rotation.
 
-Query to be run against ClickHouse on
-[monitoring.ooni.org](#monitoring.ooni.org)&thinsp;🖥:
+10. Summarize traffic hitting a test helper using the following commands:
+
+    Top 10 miniooni probe IP addresses (Warning: this is sensitive data)
+
+    `tail -n 100000 /var/log/nginx/access.log | grep miniooni | cut -d' ' -f1|sort|uniq -c|sort -nr|head`
+
+    Similar, with anonimized IP addresses:
+
+    `grep POST /var/log/nginx/access.log | grep miniooni | cut -d'.' -f1-3 | head -n 10000 |sort|uniq -c|sort -nr|head`
+
+    Number of requests from miniooni probe in 10-minutes buckets:
+
+    `grep POST /var/log/nginx/access.log | grep miniooni | cut -d' ' -f4 | cut -c1-17 | uniq -c`
+
+    Number of requests from miniooni probe in 1-minute buckets:
+
+    `grep POST /var/log/nginx/access.log | grep miniooni | cut -d' ' -f4 | cut -c1-18 | uniq -c`
+
+    Number of requests grouped by hour, cache HIT/MISS/etc, software name and version
+
+    `head -n 100000 /var/log/nginx/access.log | awk '{print $4, $6, $13}' | cut -c1-15,22- | sort | uniq -c | sort -n`
+
+To extract data from the centralized log database
+on [monitoring.ooni.org](#monitoring.ooni.org)&thinsp;🖥 you can use:
 
 ``` sql
 SELECT message FROM logs
@@ -5599,6 +5911,10 @@ WHERE SYSLOG_IDENTIFIER = 'oohelperd'
 ORDER BY __REALTIME_TIMESTAMP DESC
 LIMIT 10
 ```
+
+> **note**
+> The table is indexed by `__REALTIME_TIMESTAMP`. Limiting the range by time can significantly increase query performance.
+
 
 See [Selecting test helper for rotation](#selecting-test-helper-for-rotation)&thinsp;🐞
 
@@ -5842,7 +6158,7 @@ Quickly review the following dashboards for unexpected changes:
  * [Fingerprint updater dashboard](#fingerprint-updater-dashboard)&thinsp;📊
  * [ASN metadata updater dashboard](#asn-metadata-updater-dashboard)&thinsp;📊
 
-Also check <https://jupyter.ooni.org/view/notebooks/jupycron/summary.html>
+Also check <https://jupyter.ooni.org/view/notebooks/jupycron/summary.html> for glitches like notebooks not being run etc.
 
 
 ### Grafana backup runbook
