@@ -13,7 +13,7 @@ This section provides a summary of the backend hosts described in the
 rest of the document.
 
 A full list is available at
-<https://github.com/ooni/sysadmin/blob/master/ansible/inventory.yml> -
+<https://github.com/ooni/sysadmin/blob/master/ansible/inventory> -
 also see [Ansible](#ansible)&thinsp;🔧
 
 
@@ -143,7 +143,7 @@ Usage:
 Some notable parts of the repository:
 
 A list of the backend hosts lives at
-<https://github.com/ooni/sysadmin/blob/master/ansible/inventory.yml>
+<https://github.com/ooni/sysadmin/blob/master/ansible/inventory>
 
 The backend deployment playbook lives at
 <https://github.com/ooni/sysadmin/blob/master/ansible/deploy-backend.yml>
@@ -243,12 +243,12 @@ flowchart LR
 ### Creating new playbooks runbook
 This runbook describe how to add new runbooks or modify existing runbooks to support new hosts.
 
-When adding a new host to an existing group, if no customization is required it is enough to modify `inventory.yml`
+When adding a new host to an existing group, if no customization is required it is enough to modify `inventory`
 and insert the hostname in the same locations as its peers.
 
 If the host requires small customization e.g. a different configuration file for the <<comp:api>>:
 
-1. add the hostname to `inventory.yml` as described above
+1. add the hostname to `inventory` as described above
 2. create "custom" blocks in `tasks/main.yml` to adapt the deployment steps to the new host using the `when:` syntax.
 
 For an example see: <https://github.com/ooni/sysadmin/blob/adb22576791baae046827c79e99b71fc825caae0/ansible/roles/ooni-backend/tasks/main.yml#L65>
@@ -257,7 +257,7 @@ NOTE: Complex `when:` rules can lower the readability of `main.yml`
 
 When adding a new type of backend component that is different from anything already existing a new dedicated role can be created:
 
-1. add the hostname to `inventory.yml` as described above
+1. add the hostname to `inventory` as described above
 2. create a new playbook e.g. `ansible/deploy-newcomponent.yml`
 3. copy files from an existing role into a new `ansible/roles/newcomponent` directory:
   * `ansible/roles/newcomponent/meta/main.yml`
@@ -300,6 +300,13 @@ It also configures the FQDNs:
 This also includes the credentials to access the Web UIs. They are
 deployed as `/etc/nginx/monitoring.htpasswd` from
 `ansible/roles/monitoring/files/htpasswd`
+
+**Warning** the following steps are dangerously broken. Applying the changes
+will either not work or worse break production.
+
+If you must do something of this sort, you will unfortunately have to resort of
+specifying the particular substeps you want to run using the `-t` tag filter
+(eg. `-t prometheus-conf` to update the prometheus configuration.
 
 Steps:
 
@@ -411,7 +418,7 @@ To deploy a new host:
 
 4.  Follow [Updating DNS diagrams](#updating-dns-diagrams)&thinsp;📒
 
-5.  Review the `inventory.yml` file and git-commit it
+5.  Review the `inventory` file and git-commit it
 
 6.  Deploy the required stack. Run ansible it test mode first. For
     example this would deploy a backend host:
@@ -427,6 +434,15 @@ To deploy a new host:
 Also see [Monitoring deployment runbook](#monitoring-deployment-runbook)&thinsp;📒 for an
 example of deployment.
 
+### Deleting a host
+
+1. Remove it from `inventory`
+
+2. Update the monitoring deployment using:
+
+```
+./play deploy-monitoring.yml -t prometheus-conf -l monitoring.ooni.org --diff
+```
 
 ## DNS and Domains
 The primary domains used by the backend are:
