@@ -1,7 +1,6 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import vercel from "@astrojs/vercel/static";
-import rehypeMermaid from "rehype-mermaid";
 import rehypeShikiji from "rehype-shikiji";
 
 // https://astro.build/config
@@ -24,7 +23,7 @@ export default defineConfig({
     }),
   ],
   markdown: {
-    rehypePlugins: [rehypeMermaid, [rehypeShikiji, { theme: "github-dark" }]],
+    rehypePlugins: [[rehypeShikiji, { theme: "github-dark" }]],
     syntaxHighlight: false,
   },
 });
