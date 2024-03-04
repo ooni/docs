@@ -1,4 +1,4 @@
 {
   "buildCommand": "npm run build",
-  "installCommand": "npm install && npx playwright install"
+  "installCommand": "npm install"
 }
