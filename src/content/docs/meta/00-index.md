@@ -68,9 +68,7 @@ simple markdown files, which can then be rendered by the
 Below is an example of how you might do it through a `Makefile`.
 
 The build process can be a simple `Makefile` calling a script, for example:
-
-`Makefile`
-```Makefile
+```
 docs:
 	./scripts/build_docs.sh
 
