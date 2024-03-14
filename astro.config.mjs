@@ -15,6 +15,10 @@ export default defineConfig({
       },
       sidebar: [
         {
+          label: "Meta",
+          autogenerate: { directory: "meta" },
+        },
+        {
           label: "Backend",
           autogenerate: { directory: "backend" },
         },
