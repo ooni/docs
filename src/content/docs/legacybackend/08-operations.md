@@ -1,6 +1,6 @@
 ---
 title: Operations
-slug: backend/operations
+slug: legacybackend/operations
 sidebar:
     order: 8
 ---

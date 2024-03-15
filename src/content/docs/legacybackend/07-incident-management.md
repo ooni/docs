@@ -1,6 +1,6 @@
 ---
 title: Incident Management
-slug: backend/incident-management
+slug: legacybackend/incident-management
 sidebar:
     order: 7
 ---

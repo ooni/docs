@@ -19,8 +19,16 @@ export default defineConfig({
           autogenerate: { directory: "meta" },
         },
         {
+          label: "Devops",
+          autogenerate: { directory: "devops" },
+        },
+        {
           label: "Backend",
           autogenerate: { directory: "backend" },
+        },
+        {
+          label: "Legacy Backend",
+          autogenerate: { directory: "legacybackend" },
         },
       ],
       expressiveCode: false,

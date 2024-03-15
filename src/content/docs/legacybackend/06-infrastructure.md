@@ -1,6 +1,6 @@
 ---
 title: Infrastructure
-slug: backend/infrastructure
+slug: legacybackend/infrastructure
 sidebar:
   order: 6
 ---

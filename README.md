@@ -1,6 +1,6 @@
 # OONI Docs
 
-[![Built with Starlight](https://astro.badg.es/v2/built-with-starlight/tiny.svg)](https://starlight.astro.build)
+Read our [documentation about documentation](https://docs.ooni.org/meta).
 
 ## Project Structure
 

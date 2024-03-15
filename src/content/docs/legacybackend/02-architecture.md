@@ -1,6 +1,6 @@
 ---
 title: System Architecture
-slug: backend/architecture
+slug: legacybackend/architecture
 sidebar:
     order: 2
 ---

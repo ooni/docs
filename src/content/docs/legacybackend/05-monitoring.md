@@ -1,6 +1,6 @@
 ---
 title: Monitoring and Alerts
-slug: backend/monitoring
+slug: legacybackend/monitoring
 sidebar:
     order: 5
 ---

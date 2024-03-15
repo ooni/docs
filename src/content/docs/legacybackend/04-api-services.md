@@ -1,6 +1,6 @@
 ---
 title: API and Services
-slug: backend/api-services
+slug: legacybackend/api-services
 sidebar:
   order: 4
 ---
