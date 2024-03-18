@@ -1581,7 +1581,7 @@ Test helpers are named `<number>.th.ooni.org`. This is required to
 generate `*.th.ooni.org` certificates.
 
 To troubleshoot rotation see
-the [test helper rotation runbook](#test-helper-rotation-runbook)&thinsp;📒
+the [test helper rotation runbook](legacybackend/incident-management/#test-helper-rotation-runbook)&thinsp;📒
 
 #### Internals
 
@@ -2038,8 +2038,8 @@ Output:
 <https://jupyter.ooni.org/view/notebooks/jupycron/autorun_test_helper_failure_rate_alarm.html>
 
 Also see the [test helpers notebook](#test-helpers-notebook)&thinsp;📔,
-the [test helper rotation runbook](#test-helper-rotation-runbook)&thinsp;📒 and
-the [test helpers failure runbook](#test-helpers-failure-runbook)&thinsp;📒
+the [test helper rotation runbook](legacybackend/incident-management/#test-helper-rotation-runbook)&thinsp;📒 and
+the [test helpers failure runbook](legacybackend/incident-management/#test-helpers-failure-runbook)&thinsp;📒
 
 #### Test helpers notebook
 
@@ -2053,8 +2053,8 @@ It provides a summary of the live and rotated test helpers:
 See <https://jupyter.ooni.org/notebooks/notebooks/test%20helpers.ipynb>
 for investigation
 
-Also see the [test helper rotation runbook](#test-helper-rotation-runbook)&thinsp;📒 and
-the [test helpers failure runbook](#test-helpers-failure-runbook)&thinsp;📒
+Also see the [test helper rotation runbook](legacybackend/incident-management/#test-helper-rotation-runbook)&thinsp;📒 and
+the [test helpers failure runbook](legacybackend/incident-management/#test-helpers-failure-runbook)&thinsp;📒
 
 #### Android probe release notebook
 
