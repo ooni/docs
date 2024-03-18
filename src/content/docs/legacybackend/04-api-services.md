@@ -64,7 +64,7 @@ installed by the [detector package](#detector-package)&thinsp;📦.
 ### ooni-api-uploader timer
 
 Runs the [Measurement uploader](#measurement-uploader)&thinsp;⚙. It is installed by the
-[analysis package](#analysis-package)&thinsp;📦. Runs `/usr/bin/ooni_api_uploader.py`
+[analysis package](legacybackend/operations/#analysis-package)&thinsp;📦. Runs `/usr/bin/ooni_api_uploader.py`
 
 [Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/api/debian/ooni-api-uploader.timer)
 
@@ -72,7 +72,7 @@ Runs the [Measurement uploader](#measurement-uploader)&thinsp;⚙. It is install
 
 Runs the [Database backup tool](#database-backup-tool)&thinsp;⚙ as
 `/usr/bin/ooni-db-backup` Also installed by the
-[analysis package](#analysis-package)&thinsp;📦.
+[analysis package](legacybackend/operations/#analysis-package)&thinsp;📦.
 
 [Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/debian/ooni-db-backup.timer)
 
@@ -90,28 +90,28 @@ See [GeoIP downloader](#geoip-downloader)&thinsp;⚙
 ### ooni-rotation timer
 
 Runs the test helper rotation script, installed by the
-[analysis package](#analysis-package)&thinsp;📦. Runs `/usr/bin/rotation`
+[analysis package](legacybackend/operations/#analysis-package)&thinsp;📦. Runs `/usr/bin/rotation`
 
 [Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/debian/ooni-rotation.timer)
 
 ### ooni-update-asn-metadata timer
 
 Fetches [ASN](#asn)&thinsp;💡 metadata, installed by the
-[analysis package](#analysis-package)&thinsp;📦. Runs `/usr/bin/analysis --update-asnmeta`
+[analysis package](legacybackend/operations/#analysis-package)&thinsp;📦. Runs `/usr/bin/analysis --update-asnmeta`
 
 [Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/debian/ooni-update-asn-metadata.timer)
 
 ### ooni-update-citizenlab
 
 Fetches CitizenLab data from GitHub, installed by the
-[analysis package](#analysis-package)&thinsp;📦. Runs `/usr/bin/analysis --update-citizenlab`
+[analysis package](legacybackend/operations/#analysis-package)&thinsp;📦. Runs `/usr/bin/analysis --update-citizenlab`
 
 [Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/debian/ooni-update-citizenlab.timer)
 
 ### ooni-update-fingerprints
 
 Fetches fingerprints from GitHub, installed by the
-[analysis package](#analysis-package)&thinsp;📦. Runs `/usr/bin/analysis --update-fingerprints`
+[analysis package](legacybackend/operations/#analysis-package)&thinsp;📦. Runs `/usr/bin/analysis --update-fingerprints`
 
 [Source](https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/debian/ooni-update-fingerprints.timer)
 
@@ -1146,7 +1146,7 @@ Miscellaneous scripts, services and tools. It contains ancillary
 components that are not updated often and might not justify a dedicated
 Debian package for each of them.
 
-Deployed using the [analysis package](#analysis-package)&thinsp;📦
+Deployed using the [analysis package](legacybackend/operations/#analysis-package)&thinsp;📦
 
 <https://github.com/ooni/backend/blob/0ec9fba0eb9c4c440dcb7456f2aab529561104ae/analysis/>
 
@@ -1221,7 +1221,7 @@ then swaps it with [citizenlab table](#citizenlab-table)&thinsp;⛁ atomically. 
 case of failure during git cloning, verification and table overwrite the
 final swap does not happen, leaving the `citizenlab` table unaltered.
 
-It is deployed using the [analysis package](#analysis-package)&thinsp;📦 and started
+It is deployed using the [analysis package](legacybackend/operations/#analysis-package)&thinsp;📦 and started
 by the [ooni-update-citizenlab](#ooni-update-citizenlab)&thinsp;⏲ Systemd timer.
 
 Logs are generated as the `analysis.citizenlab_test_lists_updater` unit.
@@ -1266,7 +1266,7 @@ The updater overwrites the tables ending with `_tmp` and then swaps them
 with the \"real\" tables atomically. In case of failure the final swap
 does not happen, leaving the \"real\" tables unaltered.
 
-It is deployed using the [analysis package](#analysis-package)&thinsp;📦 and started
+It is deployed using the [analysis package](legacybackend/operations/#analysis-package)&thinsp;📦 and started
 by the [ooni-update-citizenlab](#ooni-update-citizenlab)&thinsp;⏲ Systemd timer.
 
 Logs are generated as the `analysis.fingerprints_updater` unit.
@@ -1562,7 +1562,7 @@ It is designed to be extended:
   provide frequently changing \"entry point\" IP addresses for probes.
 
 The script is deployed on [backend-fsn.ooni.org](#backend-fsn.ooni.org)&thinsp;🖥 using the
-[analysis deb package](#analysis-package)&thinsp;📦
+[analysis deb package](legacybackend/operations/#analysis-package)&thinsp;📦
 
 The configuration is deployed using [Ansible](#ansible)&thinsp;🔧:
 

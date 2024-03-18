@@ -23,13 +23,13 @@ also see [Ansible](#ansible)&thinsp;🔧
 Public-facing production backend host, receiving the deployment of the
 packages:
 
-- [ooni-api](#ooni-api-package)&thinsp;📦
+- [ooni-api](legacybackend/operations/#ooni-api-package)&thinsp;📦
 
-- [fastpath](#fastpath-package)&thinsp;📦
+- [fastpath](legacybackend/operations/#fastpath-package)&thinsp;📦
 
-- [analysis](#analysis-package)&thinsp;📦
+- [analysis](legacybackend/operations/#analysis-package)&thinsp;📦
 
-- [detector](#detector-package)&thinsp;📦
+- [detector](legacybackend/operations/#detector-package)&thinsp;📦
 
 #### backend-hel.ooni.org
 
