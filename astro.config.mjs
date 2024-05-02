@@ -36,6 +36,9 @@ export default defineConfig({
         },
       ],
       expressiveCode: false,
+      customCss: [
+        './src/styles/custom.css',
+      ],
     }),
   ],
   markdown: {
