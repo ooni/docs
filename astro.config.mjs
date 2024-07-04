@@ -33,7 +33,7 @@ export default defineConfig({
         {
           label: "Probe Engine",
           autogenerate: { directory: "probe-engine" },
-        }
+        },
         {
           label: "Legacy Backend",
           autogenerate: { directory: "legacybackend" },
