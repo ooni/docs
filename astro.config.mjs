@@ -31,13 +31,13 @@ export default defineConfig({
           autogenerate: { directory: "backend" },
         },
         {
-          label: "Legacy Backend",
-          autogenerate: { directory: "legacybackend" },
-        },
-        {
           label: "Probe Engine",
           autogenerate: { directory: "probe-engine" },
         }
+        {
+          label: "Legacy Backend",
+          autogenerate: { directory: "legacybackend" },
+        },
       ],
       expressiveCode: false,
       customCss: [
