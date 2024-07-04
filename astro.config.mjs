@@ -34,6 +34,10 @@ export default defineConfig({
           label: "Legacy Backend",
           autogenerate: { directory: "legacybackend" },
         },
+        {
+          label: "Probe Engine",
+          autogenerate: { directory: "probe-engine" },
+        }
       ],
       expressiveCode: false,
       customCss: [
