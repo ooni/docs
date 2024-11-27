@@ -1,5 +1,6 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
+import starlightOpenAPI, { openAPISidebarGroups } from 'starlight-openapi'
 import vercel from "@astrojs/vercel/static";
 import rehypeShikiji from "rehype-shikiji";
 
@@ -13,6 +14,21 @@ export default defineConfig({
       social: {
         github: "https://github.com/ooni/docs",
       },
+      plugins: [
+        // Generate the OpenAPI documentation pages.
+        starlightOpenAPI([
+          {
+           base: 'api-oonirun',
+           label: 'OONI Run API',
+           schema: './schemas/oonirun.json',
+          },
+          {
+           base: 'api-oonifindings',
+           label: 'OONI Findings API',
+           schema: './schemas/oonifindings.json',
+          },
+        ]),
+      ],
       sidebar: [
         {
           label: "Data",
@@ -34,6 +50,7 @@ export default defineConfig({
           label: "Legacy Backend",
           autogenerate: { directory: "legacybackend" },
         },
+        ...openAPISidebarGroups
       ],
       expressiveCode: false,
       customCss: [
@@ -41,6 +58,7 @@ export default defineConfig({
       ],
     }),
   ],
+
   markdown: {
     rehypePlugins: [[rehypeShikiji, { theme: "github-dark" }]],
     syntaxHighlight: false,
