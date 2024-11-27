@@ -2,7 +2,6 @@ import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import starlightOpenAPI, { openAPISidebarGroups } from 'starlight-openapi'
 import vercel from "@astrojs/vercel/static";
-import rehypeShikiji from "rehype-shikiji";
 
 // https://astro.build/config
 export default defineConfig({
@@ -32,35 +31,43 @@ export default defineConfig({
       sidebar: [
         {
           label: "Data",
-          autogenerate: { directory: "data" },
+          autogenerate: {
+            directory: "data",
+          },
         },
         {
           label: "Meta",
-          autogenerate: { directory: "meta" },
+          autogenerate: {
+            directory: "meta",
+          },
         },
         {
           label: "Devops",
-          autogenerate: { directory: "devops" },
+          autogenerate: {
+            directory: "devops",
+          },
         },
         {
           label: "Backend",
-          autogenerate: { directory: "backend" },
+          autogenerate: {
+            directory: "backend",
+          },
+        },
+        {
+          label: "Probe Engine",
+          autogenerate: {
+            directory: "probe-engine",
+          },
         },
         {
           label: "Legacy Backend",
-          autogenerate: { directory: "legacybackend" },
+          autogenerate: {
+            directory: "legacybackend",
+          },
         },
         ...openAPISidebarGroups
       ],
-      expressiveCode: false,
-      customCss: [
-        './src/styles/custom.css',
-      ],
+      customCss: ["./src/styles/custom.css"],
     }),
-  ],
-
-  markdown: {
-    rehypePlugins: [[rehypeShikiji, { theme: "github-dark" }]],
-    syntaxHighlight: false,
-  },
+  ]
 });
