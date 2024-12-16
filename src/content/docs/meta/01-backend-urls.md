@@ -1,3 +1,9 @@
+---
+title: Inventory of all URLs used for backend communication
+description: Inventory of all URLs used for backend communication
+slug: backend-urls
+---
+
 ## Inventory of all URLs used for backend communication
 
 | URL   | Component    | Version | Since | Until | Notes |
