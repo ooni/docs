@@ -2,16 +2,23 @@ import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import starlightOpenAPI, { openAPISidebarGroups } from "starlight-openapi";
 import vercel from "@astrojs/vercel/static";
+import { mermaid } from "./src/plugins/mermaid";
 
 // https://astro.build/config
 export default defineConfig({
   output: "static",
   adapter: vercel(),
+  markdown: {
+    remarkPlugins: [mermaid],
+  },
   integrations: [
     starlight({
       title: "OONI Docs",
       social: {
         github: "https://github.com/ooni/docs",
+      },
+      components: {
+        PageFrame: "./src/components/PageFrame.astro",
       },
       plugins: [
         // Generate the OpenAPI documentation pages.
