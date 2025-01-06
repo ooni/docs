@@ -3,17 +3,20 @@ import type { Props } from "@astrojs/starlight/props";
 import Default from "@astrojs/starlight/components/PageFrame.astro";
 ---
 
-<Default {...Astro.props}><slot /></Default>
+<Default {...Astro.props}>
+  <slot name="header" slot="header" />
+  <slot name="sidebar" slot="sidebar" />
+  <slot />
+</Default>
 <script>
   /**
-   * @params {HTMLCollectionOf<HTMLElement>} graphs
+   * taken from: https://github.com/JuanM04/portfolio/blob/983b0ed0eabdac37bf8b7912d3e8128a443192b9/src/pages/docs/%5B...documentSlug%5D.astro#L74-L103
    */
   async function renderDiagrams(graphs) {
     const { default: mermaid } = await import("mermaid");
     mermaid.initialize({
       startOnLoad: false,
       fontFamily: "var(--sans-font)",
-      // @ts-ignore This works, but TS expects a enum for some reason
       theme: window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
         : "default",
