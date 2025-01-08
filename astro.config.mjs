@@ -66,6 +66,12 @@ export default defineConfig({
             directory: "probe-engine",
           },
         },
+        {
+          label: "Probe App",
+          autogenerate: {
+            directory: "probe-multiplatform",
+          },
+        },
         ...openAPISidebarGroups,
       ],
       customCss: ["./src/styles/custom.css"],
