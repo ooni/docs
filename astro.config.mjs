@@ -67,7 +67,7 @@ export default defineConfig({
           },
         },
         {
-          label: "Probe MultiPlatform",
+          label: "Probe App",
           autogenerate: {
             directory: "probe-multiplatform",
           },
