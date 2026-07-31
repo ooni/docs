@@ -3,9 +3,9 @@
 # version: ooni/backend/docs/WebUIs.md:02ad28e7
 title: Web UIs
 description: Web UIs
-slug: 10
+slug: web-uis
 sidebar:
-    order: web-uis
+    order: 10
 ---
 [edit file](https://github.com/ooni/backend/edit/master/docs/WebUIs.md)
 

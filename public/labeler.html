@@ -1,0 +1,2061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Measurement adjudication</title>
+<style>
+  :root {
+    --ink:      #080c12;
+    --panel:    #131820;
+    --panel-2:  #1a202a;
+    --line:     #323d4d;
+    --text:     #f0f4fa;
+    --dim:      #b5c0cc;
+    --faint:    #8b99a9;
+
+    --probe:    #ffb84d;   /* what the probe saw — possibly tampered */
+    --control:  #6ec7de;   /* what the control saw — the yardstick */
+    --diverge:  #ff7359;
+    --agree:    #7dd195;
+    --sealed:   #9d84f7;
+
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Mono", Menlo, monospace;
+    --sans: "Inter", "Helvetica Neue", system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--ink); color: var(--text);
+    font-family: var(--sans); font-size: 13px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--probe); outline-offset: 2px; }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--faint);
+  }
+
+  /* ---------- shell ---------- */
+  #app { display: grid; grid-template-columns: 210px 1fr 300px; height: 100%; }
+  @media (max-width: 1100px) { #app { grid-template-columns: 1fr; overflow: auto; } }
+
+  aside, .judgment {
+    background: var(--panel); border-right: 1px solid var(--line);
+    padding: 14px; overflow-y: auto;
+  }
+  .judgment { border-right: none; border-left: 1px solid var(--line); }
+  main { overflow-y: auto; padding: 16px 20px 60px; }
+
+  /* ---------- setup gate ---------- */
+  #gate {
+    position: fixed; inset: 0; background: var(--ink);
+    display: grid; place-items: center; z-index: 50; padding: 24px;
+  }
+  .gate-card { max-width: 460px; width: 100%; }
+  .gate-card h1 {
+    font-size: 22px; font-weight: 600; margin: 0 0 6px; letter-spacing: -.01em;
+  }
+  .gate-card p { color: var(--dim); margin: 0 0 20px; }
+  .field { display: block; margin-bottom: 14px; }
+  .field span { display: block; margin-bottom: 5px; }
+  input[type=text], input[type=number], input[type=date], select, textarea {
+    width: 100%; background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 4px; padding: 7px 9px; font-family: var(--mono); font-size: 12px;
+  }
+  textarea { resize: vertical; font-size: 11px; line-height: 1.45; }
+
+  .btn {
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px;
+    padding: 7px 12px; cursor: pointer; font-size: 12px;
+  }
+  .btn:hover { border-color: var(--dim); }
+  .btn-primary { background: var(--probe); border-color: var(--probe); color: #1a1204; font-weight: 600; }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* ---------- flow ribbon ---------- */
+  .flow { display:flex; gap:4px; list-style:none; padding:0; margin:0 0 12px; }
+  .flow li {
+    flex:1; text-align:center; font-size:9.5px; text-transform:uppercase;
+    letter-spacing:.07em; color:var(--faint); padding:4px 1px;
+    border-bottom:2px solid var(--line); cursor:pointer; user-select:none;
+  }
+  .flow li.done { color:var(--dim); border-bottom-color:var(--agree); }
+  .flow li.on   { color:var(--text); border-bottom-color:var(--probe); }
+  .flow li.skip { opacity:.35; }
+
+  /* ---------- mechanism chips + type-ahead ---------- */
+  .chips { display:flex; flex-wrap:wrap; gap:5px; margin:0 0 6px; }
+  .chips:empty { display:none; }
+  .chip {
+    display:inline-flex; align-items:center; gap:6px; font-family:var(--mono);
+    font-size:11px; background:var(--panel-2); border:1px solid var(--line);
+    border-radius:3px; padding:2px 6px;
+  }
+  .chip span { display:inline; margin:0; }   /* undo .field span block styling */
+  .chip button { background:none; border:0; cursor:pointer; color:var(--dim);
+    padding:0; font-size:12px; line-height:1; }
+  .chip button:hover { color:var(--diverge); }
+  .mech-wrap { position:relative; }
+  .mech-list {
+    position:absolute; z-index:30; left:0; right:0; top:100%;
+    max-height:280px; overflow-y:auto; background:var(--panel-2);
+    border:1px solid var(--line); border-radius:4px;
+  }
+  .mi { padding:5px 8px; cursor:pointer; }
+  .mi .pth { font-family:var(--mono); font-size:11px; }
+  .mi .d { color:var(--faint); font-size:11px; margin-left:8px; }
+  .mi.hl, .mi:hover { background:var(--ink); }
+  #mechField.dim { opacity:.45; }
+
+  /* ---------- queue rail ---------- */
+  .rail-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .qrow {
+    display: flex; gap: 8px; padding: 5px 7px; border-radius: 3px; cursor: pointer;
+    font-family: var(--mono); font-size: 11px; color: var(--dim);
+    border-left: 2px solid transparent;
+  }
+  .qrow:hover { background: var(--panel-2); }
+  .qrow.active { background: var(--panel-2); border-left-color: var(--probe); color: var(--text); }
+  .qrow.done { color: var(--faint); }
+  .qrow .tick { width: 10px; }
+  .qrow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .progress { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; margin: 6px 0 12px; }
+  .progress i { display: block; height: 100%; background: var(--agree); }
+
+  /* ---------- header of the candidate ---------- */
+  .subject { border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 16px; }
+  .subject h2 { margin: 3px 0 8px; font-size: 19px; font-weight: 600; letter-spacing: -.01em; word-break: break-all; }
+  .meta { display: flex; flex-wrap: wrap; gap: 4px 16px; font-family: var(--mono); font-size: 11px; color: var(--dim); }
+  .meta b { color: var(--text); font-weight: 500; }
+
+  /* ---------- the diff: the signature element ---------- */
+  .layer { margin-bottom: 18px; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+  .layer > header {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--panel); padding: 6px 10px; border-bottom: 1px solid var(--line);
+  }
+  .layer > header .eyebrow { color: var(--dim); }
+
+  table.diff { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11.5px; }
+  table.diff th {
+    text-align: left; font-weight: 500; padding: 4px 10px;
+    font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint);
+    border-bottom: 1px solid var(--line);
+  }
+  table.diff th.p { color: var(--probe); }
+  table.diff th.c { color: var(--control); }
+  table.diff td { padding: 4px 10px; vertical-align: top; border-bottom: 1px solid rgba(50,61,77,.55); }
+  table.diff td.k { color: var(--dim); width: 30%; }
+  table.diff td.v { width: 35%; word-break: break-all; }
+  table.diff tr.differs { background: rgba(255,115,89,.09); }
+  table.diff tr.differs td.k { border-left: 2px solid var(--diverge); padding-left: 8px; color: var(--diverge); }
+  table.diff td.v.probe { color: var(--probe); }
+  table.diff td.v.control { color: var(--control); }
+  table.diff td.nil { color: var(--faint); font-style: italic; }
+  table.diff td.v.ok { color: var(--agree); font-style: normal; }
+  .no-ctrl { padding: 8px 10px; color: var(--faint); font-family: var(--mono); font-size: 11px; }
+
+  /* ---------- DNS answer sets ---------- */
+  .overlap {
+    display: flex; flex-wrap: wrap; gap: 4px 20px; padding: 7px 10px;
+    border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 11px;
+    color: var(--dim); background: rgba(0,0,0,.15);
+  }
+  .overlap b { font-weight: 500; }
+  .overlap b.yes { color: var(--agree); }
+  .overlap b.no  { color: var(--diverge); }
+  .overlap b.na  { color: var(--faint); }
+
+  table.answers { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11.5px; }
+  table.answers th {
+    text-align: left; font-weight: 500; padding: 4px 10px; font-size: 10px;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--faint);
+    border-bottom: 1px solid var(--line);
+  }
+  table.answers td { padding: 4px 10px; border-bottom: 1px solid rgba(50,61,77,.55); vertical-align: top; }
+  table.answers tr.probe-only { background: rgba(255,115,89,.10); }
+  table.answers tr.probe-only td.ans { border-left: 2px solid var(--diverge); padding-left: 8px; }
+  table.answers td.ans { word-break: break-all; }
+  table.answers td.dim { color: var(--dim); }
+  .pill {
+    display: inline-block; font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase;
+    border: 1px solid currentColor; border-radius: 3px; padding: 0 4px; white-space: nowrap;
+  }
+  .pill.both         { color: var(--agree); }
+  .pill.probe-only   { color: var(--diverge); }
+  .pill.control-only { color: var(--control); }
+  .flag {
+    display: inline-block; margin-left: 6px; font-size: 9.5px; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--diverge);
+  }
+  .dns-fail { padding: 8px 10px; font-family: var(--mono); font-size: 11.5px; }
+  .dns-fail .p { color: var(--probe); }
+  .dns-fail .c { color: var(--control); }
+
+  /* ---------- context strip ---------- */
+  .ctx { display: flex; gap: 1px; align-items: flex-end; height: 46px; margin-top: 6px; }
+  .ctx .bar { flex: 1; min-width: 2px; display: flex; flex-direction: column-reverse; }
+  .ctx .seg { width: 100%; }
+  .ctx-legend { display: flex; flex-wrap: wrap; gap: 3px 12px; margin-top: 7px; font-family: var(--mono); font-size: 10px; color: var(--dim); }
+  .ctx-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+
+  /* ---------- judgment rail ---------- */
+  .judgment h3 { font-size: 12px; margin: 0 0 3px; font-weight: 600; }
+  .judgment .hint { color: var(--faint); font-size: 11px; margin: 0 0 12px; }
+  .choices { display: grid; gap: 5px; margin-bottom: 14px; }
+  .choice {
+    display: flex; align-items: center; gap: 9px; width: 100%;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px;
+    padding: 8px 10px; cursor: pointer; text-align: left;
+  }
+  .choice kbd {
+    font-family: var(--mono); font-size: 10px; background: var(--ink);
+    border: 1px solid var(--line); border-radius: 3px; padding: 1px 5px; color: var(--dim);
+  }
+  .choice:hover { border-color: var(--dim); }
+  .choice[aria-pressed=true] { border-color: var(--sel, var(--probe)); background: color-mix(in srgb, var(--sel, var(--probe)) 14%, var(--panel-2)); }
+  .choice[aria-pressed=true] kbd { color: var(--text); }
+  .c-blocked { --sel: var(--diverge); }
+  .c-down    { --sel: var(--probe); }
+  .c-ok      { --sel: var(--agree); }
+  .c-un      { --sel: var(--sealed); }
+  .c-unusable{ --sel: var(--faint); }
+
+  .seg-group { display: flex; gap: 4px; margin-bottom: 12px; }
+  .seg-group button { flex: 1; padding: 5px; font-size: 11px; }
+  .seg-group button[aria-pressed=true] { background: var(--sealed); border-color: var(--sealed); color: #fff; }
+
+  /* ---------- sealed / reveal ---------- */
+  .sealed-box {
+    border: 1px dashed var(--sealed); border-radius: 5px; padding: 12px;
+    color: var(--dim); font-size: 11.5px; margin-top: 14px;
+  }
+  .sealed-box .eyebrow { color: var(--sealed); display: block; margin-bottom: 5px; }
+  .reveal-box { border: 1px solid var(--line); border-radius: 5px; padding: 12px; margin-top: 14px; background: var(--panel-2); }
+  .reveal-box dl { margin: 0; font-family: var(--mono); font-size: 11px; }
+  .reveal-box dt { color: var(--faint); margin-top: 7px; }
+  .reveal-box dd { margin: 1px 0 0; }
+  .agree-flag { font-size: 11px; padding: 5px 8px; border-radius: 3px; margin-bottom: 9px; font-family: var(--mono); }
+  .agree-flag.same { background: rgba(125,209,149,.16); color: var(--agree); }
+  .agree-flag.diff { background: rgba(255,115,89,.16); color: var(--diverge); }
+
+  .banner {
+    background: rgba(157,132,247,.14); border: 1px solid var(--sealed);
+    border-radius: 4px; padding: 8px 10px; margin-bottom: 14px;
+    font-size: 11.5px; color: var(--text);
+  }
+  .err { background: rgba(255,115,89,.14); border-color: var(--diverge); }
+
+  dialog {
+    background: var(--panel); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 18px; max-width: 720px; width: 92%;
+  }
+  dialog::backdrop { background: rgba(2,4,7,.8); }
+  .hidden { display: none !important; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .spread { justify-content: space-between; }
+  .stat { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+  .stat b { color: var(--text); }
+
+  /* ---------- in-app guide ---------- */
+  #guide {
+    position: fixed; inset: 0; z-index: 60; overflow-y: auto;
+    background: var(--ink); font-size: 14px; line-height: 1.62;
+  }
+  #guide .gwrap { max-width: 760px; margin: 0 auto; padding: 30px 24px 100px; }
+  #guide a { color: var(--probe); }
+  #guide h1 { font-size: 30px; font-weight: 600; letter-spacing: -.02em; margin: 6px 0 10px; }
+  #guide .lede { color: var(--dim); font-size: 15px; margin: 0 0 34px; }
+  #guide h2 {
+    font-size: 19px; font-weight: 600; letter-spacing: -.01em;
+    margin: 44px 0 12px; padding-top: 22px; border-top: 1px solid var(--line);
+    display: flex; align-items: baseline; gap: 11px; scroll-margin-top: 20px;
+  }
+  #guide h2 .n { font-family: var(--mono); font-size: 11px; color: var(--faint); letter-spacing: .1em; flex: none; }
+  #guide h3 { font-size: 14.5px; font-weight: 600; margin: 26px 0 6px; }
+  #guide p { margin: 0 0 13px; }
+  #guide ul, #guide ol { margin: 0 0 13px; padding-left: 20px; }
+  #guide li { margin-bottom: 6px; }
+  #guide code {
+    font-family: var(--mono); font-size: .88em; background: var(--panel-2);
+    border: 1px solid var(--line); border-radius: 3px; padding: 1px 5px;
+  }
+  #guide pre {
+    font-family: var(--mono); font-size: 11.5px; line-height: 1.55;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 5px;
+    padding: 12px 14px; overflow-x: auto; margin: 0 0 16px;
+  }
+  #guide pre code { background: none; border: none; padding: 0; }
+  #guide table { width: 100%; border-collapse: collapse; margin: 0 0 18px; font-size: 13px; }
+  #guide th {
+    text-align: left; font-weight: 500; font-family: var(--mono); font-size: 10px;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--faint);
+    padding: 5px 10px 5px 0; border-bottom: 1px solid var(--line);
+  }
+  #guide td { padding: 7px 10px 7px 0; border-bottom: 1px solid rgba(50,61,77,.55); vertical-align: top; }
+  #guide td:first-child { white-space: nowrap; }
+  #guide kbd {
+    font-family: var(--mono); font-size: 11px; background: var(--panel-2);
+    border: 1px solid var(--line); border-radius: 3px; padding: 1px 6px; color: var(--text);
+  }
+  #guide .callout {
+    border-left: 3px solid var(--sealed); background: rgba(157,132,247,.11);
+    padding: 12px 15px; border-radius: 0 5px 5px 0; margin: 0 0 18px;
+  }
+  #guide .callout.warn { border-color: var(--diverge); background: rgba(255,115,89,.10); }
+  #guide .callout .eyebrow { display: block; margin-bottom: 5px; color: var(--sealed); }
+  #guide .callout.warn .eyebrow { color: var(--diverge); }
+  #guide .callout p:last-child { margin-bottom: 0; }
+  #guide .verdict { border: 1px solid var(--line); border-radius: 5px; padding: 13px 15px; margin: 0 0 12px; }
+  #guide .verdict h4 { margin: 0 0 5px; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 9px; }
+  #guide .verdict h4 kbd { font-size: 10px; }
+  #guide .verdict.blocked h4 { color: var(--diverge); }
+  #guide .verdict.down h4 { color: var(--probe); }
+  #guide .verdict.ok h4 { color: var(--agree); }
+  #guide .verdict.un h4 { color: var(--sealed); }
+  #guide .verdict.unus h4 { color: var(--dim); }
+  #guide .verdict p { margin: 0 0 7px; font-size: 13px; }
+  #guide .verdict p:last-child { margin: 0; }
+  #guide .verdict .ex { color: var(--dim); font-size: 12.5px; font-family: var(--mono); }
+  #guide .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; }
+  #guide .s-probe { background: var(--probe); }
+  #guide .s-control { background: var(--control); }
+  #guide .s-diverge { background: var(--diverge); }
+  #guide .toc { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; margin: 0 0 10px; }
+  #guide .toc ol { margin: 8px 0 0; padding-left: 20px; font-size: 13.5px; }
+  #guide .toc a { color: var(--text); text-decoration: none; }
+  #guide .toc a:hover { color: var(--probe); }
+  #guide .gclose {
+    position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between;
+    align-items: center; background: var(--ink); padding: 12px 0 14px;
+    border-bottom: 1px solid var(--line); margin-bottom: 24px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ setup gate ============ -->
+<div id="gate">
+  <div class="gate-card">
+    <span class="eyebrow">Measurement adjudication</span>
+    <h1>Who is labelling?</h1>
+    <p>Your name goes on every label you commit, so disagreements stay
+       traceable. Labels are kept in this browser only — nothing is written
+       back to OONI. Export them when you finish a session.</p>
+    <label class="field">
+      <span>Adjudicator</span>
+      <input type="text" id="who" placeholder="e.g. john" autocomplete="off">
+    </label>
+    <label class="field">
+      <span>API base</span>
+      <input type="text" id="apiBase" value="https://oonimeasurements.dev.ooni.io/">
+    </label>
+    <button class="btn btn-primary" id="startBtn">Start labelling</button>
+    <button class="btn" id="gateGuide" style="margin-left:8px">Read the guide</button>
+    <p id="resumeNote" class="hint hidden" style="margin-top:14px;color:var(--dim)"></p>
+  </div>
+</div>
+
+<!-- ============ main ============ -->
+<div id="app" class="hidden">
+
+  <aside>
+    <div class="rail-h">
+      <span class="eyebrow">Queue</span>
+      <span class="stat" id="qcount">0</span>
+    </div>
+    <div class="progress"><i id="qbar" style="width:0%"></i></div>
+    <div id="designNote" class="stat hidden" style="margin-bottom:8px"></div>
+    <div id="queue"></div>
+    <button class="btn" id="drawBtn" style="width:100%;margin-top:10px">Draw a queue</button>
+
+    <div class="rail-h" style="margin-top:22px">
+      <span class="eyebrow">Session</span>
+    </div>
+    <div class="stat" id="sessionStats"></div>
+    <button class="btn" id="exportBtn" style="width:100%;margin-top:10px">Export labels</button>
+    <button class="btn" id="railGuide" style="width:100%;margin-top:6px">
+       Guide <kbd style="font-family:var(--mono);font-size:10px;opacity:.6">?</kbd>
+    </button>
+  </aside>
+
+  <main>
+    <div id="mainBody">
+      <div class="banner">Draw a queue to begin. Rows arrive interleaved
+        across strata, so you cannot tell which stratum a row came from — that
+        is deliberate.</div>
+    </div>
+  </main>
+
+  <div class="judgment">
+    <span class="eyebrow">Your judgment</span>
+    <h3 id="jTitle">Nothing loaded</h3>
+    <p class="hint" id="jHint">What does <em>this measurement</em> show? Not
+       what the country was doing that week.</p>
+
+    <ol class="flow" id="flow" title="The keyboard walks you through these in order">
+      <li data-step="verdict">Verdict</li>
+      <li data-step="mechanism">Mechanisms</li>
+      <li data-step="confidence">Confidence</li>
+      <li data-step="rationale">Rationale</li>
+    </ol>
+
+    <div class="choices">
+      <button class="choice c-blocked" data-label="blocked"  aria-pressed="false"><kbd>B</kbd> Blocked</button>
+      <button class="choice c-down"    data-label="down"     aria-pressed="false"><kbd>D</kbd> Down</button>
+      <button class="choice c-ok"      data-label="ok"       aria-pressed="false"><kbd>O</kbd> OK</button>
+      <button class="choice c-un"      data-label="unadjudicated" aria-pressed="false"><kbd>U</kbd> Can't call it</button>
+      <button class="choice c-unusable" data-label="unusable" aria-pressed="false"><kbd>X</kbd> Unusable row</button>
+    </div>
+
+    <span class="eyebrow">Confidence</span>
+    <div class="seg-group" id="confGroup">
+      <button class="btn" data-conf="certain"  aria-pressed="false">Certain</button>
+      <button class="btn" data-conf="probable" aria-pressed="true">Probable</button>
+      <button class="btn" data-conf="uncertain" aria-pressed="false">Uncertain</button>
+    </div>
+
+    <label class="field" id="mechField">
+      <span class="eyebrow">Mechanisms
+        <a href="#g-mechanism" class="guide-link"
+           style="float:right;font-size:11px;color:var(--dim);text-transform:none;letter-spacing:0">taxonomy</a>
+      </span>
+      <div class="chips" id="mechChips"></div>
+      <div class="mech-wrap">
+        <input type="text" id="mechInput" autocomplete="off" spellcheck="false"
+               style="font-family:var(--mono)"
+               placeholder="type to filter · ⏎ adds · ⏎ on empty continues">
+        <div class="mech-list hidden" id="mechList" role="listbox"></div>
+      </div>
+    </label>
+    <div id="mechNote" class="stat hidden" style="margin:-8px 0 12px"></div>
+
+    <label class="field">
+      <span class="eyebrow">Rationale</span>
+      <textarea id="why" rows="4" placeholder="Name the evidence. 'Control returned 3 Cloudflare A-records; probe got one in-country IP in AS12345.'"></textarea>
+    </label>
+
+    <button class="btn btn-primary" id="commitBtn" style="width:100%" disabled>
+      Commit &amp; reveal <kbd style="opacity:.7">⏎</kbd>
+    </button>
+
+    <div id="sealed" class="sealed-box">
+      <span class="eyebrow">Sealed until you commit</span>
+      The pipeline's verdict and LoNI values are hidden. Seeing them first
+      would anchor your judgment, and every likelihood ratio fit from these
+      labels would be inflated by an amount nobody can measure.
+      <a href="#g-blinding" class="guide-link" style="color:var(--sealed)">Why</a>
+    </div>
+    <div id="reveal" class="hidden"></div>
+  </div>
+</div>
+
+<!-- ============ guide ============ -->
+<div id="guide" class="hidden">
+<div class="gwrap">
+
+  <div class="gclose">
+    <span class="eyebrow">Adjudication guide</span>
+    <button class="btn" id="guideClose">Back to labelling <kbd style="font-family:var(--mono);font-size:10px;opacity:.6">Esc</kbd></button>
+  </div>
+
+  <h1>How this works</h1>
+  <p class="lede">You are building the yardstick the censorship pipeline gets
+  measured against. This explains what each judgment means, how to read the
+  evidence, and why some of the interface deliberately withholds things from
+  you.</p>
+
+  <div class="toc">
+    <span class="eyebrow">Contents</span>
+    <ol>
+      <li><a href="#g-job">What you are actually deciding</a></li>
+      <li><a href="#g-questions">The three questions, in order</a></li>
+      <li><a href="#g-dns">Reading the DNS answer set</a></li>
+      <li><a href="#g-verdicts">The five judgments</a></li>
+      <li><a href="#g-mechanism">Naming the mechanisms</a></li>
+      <li><a href="#g-confidence">Confidence and rationale</a></li>
+      <li><a href="#g-blinding">Why the verdict is sealed</a></li>
+      <li><a href="#g-design">Sampling, weights and the design ID</a></li>
+      <li><a href="#g-export">What happens to your labels</a></li>
+      <li><a href="#g-keys">Keyboard reference</a></li>
+    </ol>
+  </div>
+
+  <h2 id="g-job"><span class="n">01</span> What you are actually deciding</h2>
+  <p>One sentence: <b>you are judging a single measurement, using only what was
+  available when it was taken.</b> You are not deciding whether a site is blocked
+  in a country.</p>
+  <p>That distinction does most of the work. A measurement taken during a
+  well-documented national block can still be a perfectly clean <code>ok</code> —
+  because the probe was on an unaffected network, or used an offshore resolver,
+  or ran before the block landed. Those rows are the most valuable in the corpus
+  and the easiest to get wrong.</p>
+  <div class="callout warn">
+    <span class="eyebrow">The failure mode to watch for in yourself</span>
+    <p>If you notice you are reaching for <code>blocked</code> because you know
+    the country was blocking that week, stop. That is incident adjudication
+    wearing a measurement's clothes, and it poisons every rate computed from
+    these labels afterwards.</p>
+  </div>
+
+  <h2 id="g-questions"><span class="n">02</span> The three questions, in order</h2>
+  <h3>Q1 — Is this row judgeable at all?</h3>
+  <p>Missing control, malformed response, truncated capture, nonsense timestamps.
+  Mark it <kbd>X</kbd> and move on. Do this first and do it ruthlessly — every
+  minute spent agonising over a broken row is a minute not spent on a real one.</p>
+  <h3>Q2 — Did the connection fail, and how?</h3>
+  <p>Separate <i>failure</i> from <i>interference</i>. A timeout where the control
+  also timed out is the site being down. A reset against a working control is
+  something interfering. This is where most disagreement between adjudicators
+  lives, so it is worth slowing down here specifically.</p>
+  <h3>Q3 — Is the interference deliberate?</h3>
+  <p>A blockpage, an injected DNS answer, a reset that lands consistently at the
+  same point in the handshake: deliberate. Transient, single probe, no pattern in
+  the ±6h strip: probably just down, at <code>uncertain</code> confidence.</p>
+
+  <h2 id="g-dns"><span class="n">03</span> Reading the DNS answer set</h2>
+  <p>DNS is shown as a <b>set comparison per hostname</b>, not field by field. A
+  resolution returning four addresses produces four rows in the pipeline; what
+  matters is whether the probe's set of answers relates to the control's set, so
+  they are collapsed and compared together.</p>
+<pre><code>answers 1 probe / 4 control   IP overlap 0 of 1   ASN overlap 0 of 1   org overlap 0 of 1
+
+SEEN BY    ADDRESS          ASN        ORGANISATION      GEO
+probe      41.222.10.8      AS37693    TunisiaNet        TN
+control    104.16.132.229   AS13335    Cloudflare        US
+control    104.16.133.229   AS13335    Cloudflare        US</code></pre>
+  <p>Only addresses the control's <i>own DNS query</i> returned count on the
+  control side. The control also connects to the probe's answers over TCP and
+  TLS, producing control rows with <code>dns_success</code> unset — those are
+  the probe's answers being probed, not an independent resolution, and counting
+  them would read an injected address back as agreement.</p>
+  <p>The three overlap figures exist because <b>exact IP comparison on its own is
+  misleading</b>. CDNs and geo-DNS rotate addresses constantly and legitimately, so
+  "the probe got a different IP than the control" is routine and means almost
+  nothing by itself. Read them together:</p>
+  <table>
+    <tr><th>Pattern</th><th>What it usually means</th></tr>
+    <tr><td>IP <b>no</b>, ASN <b>yes</b></td>
+        <td>Same network, different edge node. Normal CDN behaviour. Not evidence of anything.</td></tr>
+    <tr><td>IP <b>no</b>, ASN <b>no</b>, org <b>yes</b></td>
+        <td>Same operator across ASNs. Still ordinary.</td></tr>
+    <tr><td>No overlap at any level, probe answer in the probe's own country</td>
+        <td>The shape of DNS poisoning. Look at what is hosted there.</td></tr>
+    <tr><td>No overlap, probe answer flagged <code>bogon</code></td>
+        <td>Blackholing. Rarely anything else.</td></tr>
+    <tr><td>Probe resolved nothing, control resolved fine</td>
+        <td>Check the failure string — <code>nxdomain</code> against a working control is a strong signal; a timeout is much weaker.</td></tr>
+  </table>
+  <p>Rows the probe saw and the control did not are highlighted, because those are
+  the answers you have to account for. Control-only rows are left plain: a control
+  returning more addresses than a single probe query is completely normal.</p>
+  <p>Below DNS, each endpoint gets its own <span class="swatch s-probe"></span>probe /
+  <span class="swatch s-control"></span>control column for TCP, TLS and HTTP, with
+  diverging fields marked <span class="swatch s-diverge"></span>. Those layers
+  genuinely are per-address, so they stay row-wise.</p>
+
+  <h2 id="g-verdicts"><span class="n">04</span> The five judgments, and the mechanisms</h2>
+  <div class="verdict blocked">
+    <h4><kbd>B</kbd> Blocked</h4>
+    <p>Someone deliberately prevented this connection. You should be able to name
+    the mechanism — or mechanisms: co-occurring techniques get one path each.</p>
+    <p class="ex">blockpage returned · injected DNS answer · reset at the SNI ·
+    certificate from an interception middlebox</p>
+  </div>
+  <div class="verdict down">
+    <h4><kbd>D</kbd> Down</h4>
+    <p>It failed, but not because anyone made it fail. The control usually failed
+    too, or the failure is the ordinary kind.</p>
+    <p class="ex">control also timed out · server returned 5xx to both sides ·
+    no IPv6 connectivity on the probe</p>
+  </div>
+  <div class="verdict ok">
+    <h4><kbd>O</kbd> OK</h4>
+    <p>It worked. Also the correct call for a measurement inside a known incident
+    window that simply was not affected.</p>
+    <p class="ex">answers overlap the control · handshake completed · expected
+    content returned</p>
+  </div>
+  <div class="verdict un">
+    <h4><kbd>U</kbd> Can't call it</h4>
+    <p>The evidence is real but genuinely ambiguous. This is a legitimate
+    outcome, not a cop-out — forcing a call on an ambiguous row damages the
+    calibration in exactly the place calibration matters most.</p>
+  </div>
+  <div class="verdict unus">
+    <h4><kbd>X</kbd> Unusable row</h4>
+    <p>Not a judgment about the network — a judgment about the data. Missing
+    control, malformed capture, broken measurement. Distinct from
+    <i>can't call it</i>, and worth keeping distinct: a stratum that is 40%
+    unusable is telling you something about the pipeline.</p>
+  </div>
+
+  <h3 id="g-mechanism">Naming the mechanisms</h3>
+  <p>A <code>blocked</code> call requires <b>at least one</b> mechanism:
+  <i>how</i> the interference was implemented, as distinct from whether it
+  happened. Each comes from a fixed taxonomy of dot-separated paths,
+  <code>&lt;layer&gt;.&lt;action&gt;.&lt;qualifier&gt;</code>.</p>
+
+  <p><b>More than one is normal, not an edge case.</b> Censors run
+  defence-in-depth: DNS injection alongside SNI-triggered resets is a routine
+  deployment, and a measurement can show both. Add one path per distinct
+  technique the evidence in front of you supports — not one per symptom of the
+  same technique. The tool collapses redundant pairs for you (adding
+  <code>tls.mitm.self_signed</code> replaces a bare <code>tls.mitm</code>,
+  since a prefix means "not narrowed further"). Two paths in the same layer are
+  allowed and occasionally right — an injected A record next to an NXDOMAIN on
+  the AAAA — but then the rationale must say which evidence supports which,
+  because same-layer pairs are also what over-eager labelling looks like.</p>
+
+  <div class="callout">
+    <span class="eyebrow">Every prefix is a valid label</span>
+    <p><code>tls.mitm.self_signed</code>, <code>tls.mitm</code> and bare
+    <code>tls</code> are all legitimate. Picking a shorter path means
+    "interference here, not narrowed further" — so the requirement is always
+    satisfiable, and you never have to invent a specificity you do not have.
+    Guessing a leaf you are not sure of is worse than picking its parent.</p>
+  </div>
+
+  <p><b>Why not just record which rule fired?</b> Because the labels exist to
+  measure the rules. A corpus labelled <code>bogon_not_in_ctrl</code> can only
+  tell you that rule reproduces itself. Rule ids also change as rules split —
+  every label referencing a split rule would need re-adjudicating — and they are
+  not how anyone actually describes a measurement. You would say "DNS injection
+  returning an address in the ISP's own range", not a rule id. So labels use
+  this taxonomy, predictions use rule ids, and comparing them is the whole
+  point. It is also why the corpus survives a scoring rewrite.</p>
+
+  <p>The <code>layer</code> is where the interference <i>manifested</i> —
+  observed, not inferred. The <code>qualifier</code>'s meaning depends on the
+  action it follows: the trigger for a reset, the payload for an injection, the
+  certificate class for a MITM. It is a taxonomy, not a grammar; do not assume
+  the third segment means the same thing everywhere.</p>
+
+  <table>
+    <tr><th>Path</th><th>Meaning</th></tr>
+    <tr><td><code>dns.injection.blockpage</code></td><td>answer is a known blockpage address</td></tr>
+    <tr><td><code>dns.injection.bogon</code></td><td>answer is a bogon or provider-internal address</td></tr>
+    <tr><td><code>dns.injection.other</code></td><td>injected, but neither of the above</td></tr>
+    <tr><td><code>dns.nxdomain</code></td><td>NXDOMAIN for a name that resolves elsewhere</td></tr>
+    <tr><td><code>dns.refused</code> · <code>dns.timeout</code></td><td>REFUSED · no answer</td></tr>
+    <tr><td><code>tcp.reset</code></td><td>RST during connection establishment</td></tr>
+    <tr><td><code>tcp.timeout</code> · <code>tcp.refused</code></td><td>SYN unanswered · RST in response to SYN</td></tr>
+    <tr><td><code>tls.reset.sni</code></td><td>RST after ClientHello, triggered by the server name</td></tr>
+    <tr><td><code>tls.reset.other</code></td><td>RST during handshake, trigger unidentified</td></tr>
+    <tr><td><code>tls.timeout</code></td><td>handshake stalls</td></tr>
+    <tr><td><code>tls.mitm.self_signed</code></td><td>presented certificate is self-signed</td></tr>
+    <tr><td><code>tls.mitm.ca_signed</code></td><td>validly signed, but for an unexpected name or issuer</td></tr>
+    <tr><td><code>http.blockpage</code> · <code>http.redirect</code></td><td>block page served · redirect to one</td></tr>
+    <tr><td><code>http.error</code></td><td>status-code refusal (403 and similar)</td></tr>
+    <tr><td><code>http.reset.host</code></td><td>RST after the request line or Host header</td></tr>
+    <tr><td><code>http.timeout</code></td><td>no response</td></tr>
+    <tr><td><code>ip.unreachable</code></td><td>ICMP unreachable or no route</td></tr>
+  </table>
+
+  <p>Three nodes are marked in the dropdown because the evidence to support them
+  is not in this view: <code>tls.throttle.sni</code> and
+  <code>http.throttle.host</code> are not measurable with the data OONI collects
+  today, and <code>ip.prefix_null_route</code> needs co-affected targets to
+  distinguish it from a single-host failure. They exist so the vocabulary is
+  complete; pick one only if you have evidence from somewhere else.</p>
+
+  <h2 id="g-confidence"><span class="n">05</span> Confidence and rationale</h2>
+  <p><b>Confidence</b> (<kbd>1</kbd> certain, <kbd>2</kbd> probable,
+  <kbd>3</kbd> uncertain) records how sure <i>you</i> are. It is used later to
+  test how much any conclusion depends on judgment calls: if a rule's numbers
+  move sharply when the <code>probable</code> labels are dropped, that rule's
+  evidence turns out to be adjudicator-dependent, and it gets flagged as such.
+  So being honest about uncertainty is more useful than being confident.</p>
+  <p><b>Rationale</b> is required for everything except <kbd>X</kbd>. One sentence
+  naming the specific evidence:</p>
+<pre><code>Control returned 3 Cloudflare A-records; probe got a single answer in
+AS12345, in-country, serving the ISP's standard notice page.</code></pre>
+  <p>Not "looks blocked". The rationale is what makes a disagreement resolvable
+  six months later, and what makes a label defensible if it ever ends up in front
+  of someone who wants to argue with it.</p>
+
+  <h2 id="g-blinding"><span class="n">06</span> Why the verdict is sealed</h2>
+  <p>Until you commit, the panel on the right hides what the pipeline concluded —
+  the LoNI values, the top analysis, the anomaly and confirmed flags. After you
+  commit, all of it appears.</p>
+  <p>This is not ceremony. These labels exist to <i>evaluate</i> the pipeline. If
+  you see its answer first, your judgment is anchored to it, and every statistic
+  computed from these labels is inflated by an amount nobody can measure
+  afterwards. Blinding costs you one extra click and removes the whole problem.</p>
+  <p>The reveal afterwards is genuinely useful — it is how rule bugs get found —
+  and if it changes your mind, just re-label and commit again. The old label is
+  superseded, not erased, and both travel in the export.</p>
+  <div class="callout">
+    <span class="eyebrow">On the agree / disagree flag</span>
+    <p>After commit you will see whether the pipeline agreed with you. Treat that
+    as a diagnostic, not a score. A high agreement rate is not the goal; if it
+    ever starts creeping toward perfect, the most likely explanation is that
+    blinding has stopped working somewhere.</p>
+  </div>
+
+  <h2 id="g-design"><span class="n">07</span> Sampling, weights and the design ID</h2>
+  <p>You are not labelling a random slice of OONI data, and you should not want
+  to. Blocking is rare enough per-measurement that a uniform sample would be
+  almost entirely uninteresting rows. So the queue is drawn in <b>strata</b>:
+  heavily from measurements that look interesting, lightly but never zero from
+  the ones that do not.</p>
+  <table>
+    <tr><th>Stratum</th><th>Rate</th><th>Why it exists</th></tr>
+    <tr><td><code>screen_positive</code></td><td>1 in 10</td>
+        <td>Rows the pipeline finds blocked-leaning. Where most positives come from.</td></tr>
+    <tr><td><code>screen_negative</code></td><td>1 in 5,000</td>
+        <td>Rows it does not. The only thing that bounds how much blocking the pipeline is <i>missing</i>.</td></tr>
+    <tr><td><code>fingerprint_match</code></td><td>all</td>
+        <td>Exact blockpage matches. High-precision positives, tagged so they can be excluded from later checks.</td></tr>
+    <tr><td><code>incident_window</code></td><td>1 in 5</td>
+        <td>Inside a known event. Remember §01 — many of these are honestly <code>ok</code>.</td></tr>
+  </table>
+  <p>Rows from different strata are <b>interleaved</b> in your queue, and the
+  stratum is never displayed. A queue that ran all the interesting rows first
+  would tell you which stratum you were in, and that is most of the way to
+  telling you the answer.</p>
+
+  <h3>What <code>sampling_weight</code> means</h3>
+  <p>Each label carries a weight: how many production measurements that one row
+  stands for. Drawn at 1 in 10, the weight is 10. This is what converts a
+  deliberately lopsided corpus back into statements about the real world — without
+  it, the numbers reflect how the sample was drawn rather than what is happening
+  on the network.</p>
+
+  <h3>What <code>design_id</code> means</h3>
+  <p>A <b>design</b> is the complete specification of a draw: which strata, at
+  what rates, over what date frame, scoped to which country, domain and tests.
+  The <code>design_id</code> is that specification's name — and you do not choose
+  it. It is a fingerprint computed from the specification itself, so it looks
+  like <code>d6cfcc19df4</code> and appears in the left rail after you draw.</p>
+  <p>Deriving it rather than typing it does three things:</p>
+  <ol>
+    <li><b>The weights keep their meaning.</b> <code>weight: 10</code> means "one
+    in ten of the population <i>this design</i> defines". Scope a design to
+    <code>web_connectivity</code> in Italy and that sentence points at a different
+    population than an unscoped one — same number, different claim. Because the
+    scope is part of the fingerprint, those two can never end up sharing an id.</li>
+    <li><b>The draw is reproducible.</b> The id is mixed into the hash that
+    selects rows, so the same settings return the same rows in the same order.
+    Two people can draw an identical queue and compare judgments. Raising the row
+    count extends the same list rather than reshuffling it.</li>
+    <li><b>Nothing is left to discipline.</b> Change a rate, a stratum, the tests,
+    the country, the dates — the id changes on its own. There is no way to reuse
+    one across different parameters, which used to be the single mistake here that
+    failed silently and could not be repaired afterwards.</li>
+  </ol>
+
+  <h3>Replicate</h3>
+  <p>The one thing a fingerprint cannot give you is a <i>second, different</i>
+  sample from the same settings — identical settings mean an identical draw, by
+  design. That is what <b>replicate</b> is for.</p>
+  <p>Leave it at 1 normally. Raise it when you have worked through a queue and
+  want fresh rows from the same population: replicate 2 is an independent draw
+  that will not repeat what replicate 1 already covered. It is part of the
+  specification, so it produces its own id and its own recorded design.</p>
+  <div class="callout">
+    <span class="eyebrow">Rule of thumb</span>
+    <p><b>Same settings, same replicate</b> — same rows. Use this when two people
+    need to label the same queue.<br>
+    <b>Same settings, next replicate</b> — new rows, same population, weights
+    still comparable.<br>
+    <b>Different settings</b> — new design, new id, different population. Weights
+    are only comparable within a design.</p>
+  </div>
+
+  <h3>Choosing tests</h3>
+  <p>The test list shows real volume in your frame, biggest first, so you can see
+  what is worth your time. <code>web_connectivity</code> is the bulk of OONI's
+  data and the sensible place to start. The <code>screen+</code> figure tells you
+  whether a draw will actually return anything: 2,000 screen-positives at 1 in 10
+  gives you about 200 rows; 40 gives you four.</p>
+
+  <h2 id="g-export"><span class="n">08</span> What happens to your labels</h2>
+  <p>They stay in this browser. Nothing is written back to OONI, there is no
+  server-side corpus, and clearing your browser data deletes them. <b>Export at
+  the end of every session</b> — the button is at the bottom of the left rail —
+  and send the JSON wherever your team collects it.</p>
+  <p>The export carries the sampling designs alongside the labels, which is what
+  keeps the weights reconstructable by someone who was not there when you drew
+  them. Superseded labels ride along too, deliberately: a changed judgment is
+  information about how hard the row was.</p>
+  <p>Downstream, these labels become likelihood ratios — statements of the form
+  "this evidence pattern is about 40 times more likely when something is truly
+  blocked than when it is not", each with an interval and a stated sample size.
+  That is why the rationale, the confidence, and the honest <code>U</code> and
+  <code>X</code> calls all matter: they are what those numbers are made of.</p>
+
+  <p>One correction is applied for you at fitting time: labels are clustered per
+  probe, using the credentialed <code>probe_id</code> where the measurement
+  carries one and <code>report_id</code> otherwise. An incident measured forty
+  times by one probe counts once, so a chatty probe cannot inflate a rule's
+  evidence. Label whatever the queue gives you; deduplication is not your
+  job.</p>
+
+  <h2 id="g-keys"><span class="n">09</span> Keyboard reference</h2>
+  <p>The judgment panel is a stepped flow — <b>Verdict → Mechanisms →
+  Confidence → Rationale → commit</b> — and every answer advances it, so a full
+  label never needs the mouse. The ribbon above the buttons shows where you
+  are. A typical blocked row is:</p>
+  <p><kbd>B</kbd> → type <code>inj</code> <kbd>⏎</kbd> (adds the highlighted
+  path) <kbd>⏎</kbd> (empty input: move on) → <kbd>1</kbd>–<kbd>3</kbd> or
+  <kbd>⏎</kbd> to keep <i>probable</i> → one line of rationale <kbd>⏎</kbd>
+  (commits) → <kbd>⏎</kbd> (next unlabelled row).</p>
+  <table>
+    <tr><th>Key</th><th>Action</th></tr>
+    <tr><td><kbd>B</kbd> <kbd>D</kbd> <kbd>O</kbd> <kbd>U</kbd> <kbd>X</kbd></td>
+        <td>Set the verdict and advance (to Mechanisms when blocked, else to Confidence)</td></tr>
+    <tr><td>typing, <kbd>↑</kbd> <kbd>↓</kbd></td><td>Filter and highlight in the mechanism list</td></tr>
+    <tr><td><kbd>⏎</kbd> in mechanism box</td><td>Add the highlighted path; on an empty box, advance</td></tr>
+    <tr><td><kbd>Tab</kbd> in mechanism box</td><td>Add the highlighted path and keep typing (for a second one)</td></tr>
+    <tr><td><kbd>⌫</kbd> in empty mechanism box</td><td>Remove the last chip</td></tr>
+    <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>Certain / probable / uncertain (advances when on the Confidence step)</td></tr>
+    <tr><td><kbd>⏎</kbd> in rationale</td><td>Commit and reveal (<kbd>Shift</kbd>+<kbd>⏎</kbd> for a newline)</td></tr>
+    <tr><td><kbd>⏎</kbd> after commit</td><td>Next unlabelled row</td></tr>
+    <tr><td><kbd>M</kbd> / <kbd>R</kbd></td><td>Jump to Mechanisms / Rationale</td></tr>
+    <tr><td><kbd>Esc</kbd></td><td>Step back (or close this guide)</td></tr>
+    <tr><td><kbd>N</kbd></td><td>Next unlabelled row</td></tr>
+    <tr><td><kbd>?</kbd></td><td>Open this guide</td></tr>
+  </table>
+</div>
+</div>
+
+<!-- ============ draw dialog ============ -->
+<dialog id="drawDlg">
+  <span class="eyebrow">New queue</span>
+  <h3 style="margin:4px 0 14px">Draw a stratified sample</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <label class="field"><span>Replicate
+      <a href="#g-design" class="guide-link"
+         style="float:right;font-size:11px;color:var(--dim)">what is this?</a></span>
+      <input type="number" id="dReplicate" value="1" min="1"></label>
+    <label class="field"><span>Rows</span><input type="number" id="dLimit" value="40" min="1" max="500"></label>
+    <label class="field"><span>Country (optional)</span><input type="text" id="dCC" placeholder="IT" maxlength="2"></label>
+    <label class="field"><span>Domain (optional)</span><input type="text" id="dDomain" placeholder="archive.ph"></label>
+    <label class="field"><span>From</span><input type="date" id="dSince"></label>
+    <label class="field"><span>To</span><input type="date" id="dUntil"></label>
+  </div>
+  <label class="field"><span>Tests <span id="dTestHint" class="stat" style="float:right"></span></span>
+    <select id="dTests" multiple size="5" style="font-family:var(--mono)">
+      <option value="web_connectivity" selected>web_connectivity</option>
+    </select>
+  </label>
+  <label class="field"><span>Strata</span>
+    <select id="dStrata" multiple size="4" style="font-family:var(--mono)">
+      <option value="screen_positive" selected>screen_positive — 1:10</option>
+      <option value="screen_negative" selected>screen_negative — 1:5000</option>
+      <option value="fingerprint_match">fingerprint_match — census</option>
+      <option value="incident_window">incident_window — 1:5 (needs cc + domain)</option>
+    </select>
+  </label>
+  <p class="hint" style="color:var(--dim)">Keep <b>screen_negative</b> in. It is
+     the only stratum that bounds false negatives, and it is small enough to
+     feel skippable. The design ID is derived from these settings, so changing
+     any of them gives you a new one automatically — raise <b>replicate</b>
+     when you want fresh rows from the <i>same</i> settings.</p>
+  <div class="row spread" style="margin-top:14px">
+    <span id="drawErr" class="stat" style="color:var(--diverge)"></span>
+    <div class="row">
+      <button class="btn" id="drawCancel">Cancel</button>
+      <button class="btn btn-primary" id="drawGo">Draw</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- ============ export dialog ============ -->
+<dialog id="expDlg">
+  <span class="eyebrow">Export</span>
+  <h3 style="margin:4px 0 6px">Your labels</h3>
+  <p class="hint" style="color:var(--dim)">Select all and copy. This is the whole
+     corpus contribution for this browser — sampling design included, so the
+     weights stay reconstructable.</p>
+  <textarea id="expText" rows="16" readonly></textarea>
+  <div class="row spread" style="margin-top:12px">
+    <span class="stat" id="expStats"></span>
+    <div class="row">
+      <button class="btn" id="expCopy">Copy to clipboard</button>
+      <button class="btn" id="expClose">Close</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+"use strict";
+
+// ---------------------------------------------------------------- storage
+const KEY = "ooni.labeler.v1";
+const store = {
+  read() {
+    try { return JSON.parse(localStorage.getItem(KEY)) || null; }
+    catch { return null; }
+  },
+  write(s) { localStorage.setItem(KEY, JSON.stringify(s)); },
+};
+
+let S = store.read() || {
+  adjudicator: "", apiBase: "http://localhost:8000",
+  designs: {}, labels: [], queue: [],
+};
+const save = () => store.write(S);
+
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID()
+  : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16);
+    }));
+
+const $ = s => document.querySelector(s);
+const el = (t, cls, txt) => {
+  const n = document.createElement(t);
+  if (cls) n.className = cls;
+  if (txt !== undefined) n.textContent = txt;
+  return n;
+};
+const api = p => S.apiBase.replace(/\/$/, "") + "/api/v1/labeling" + p;
+
+// ---------------------------------------------------------------- gate
+const labelled = uid => S.labels.some(l => l.measurement_uid === uid && !l.superseded_by);
+
+(function initGate() {
+  if (S.adjudicator) {
+    $("#who").value = S.adjudicator;
+    $("#apiBase").value = S.apiBase;
+    const n = S.labels.length;
+    if (n) {
+      $("#resumeNote").classList.remove("hidden");
+      $("#resumeNote").textContent =
+        `${n} label${n === 1 ? "" : "s"} already in this browser. Starting will resume that session.`;
+    }
+  }
+  $("#startBtn").onclick = () => {
+    const who = $("#who").value.trim();
+    if (!who) { $("#who").focus(); return; }
+    S.adjudicator = who;
+    S.apiBase = $("#apiBase").value.trim() || S.apiBase;
+    save();
+    $("#gate").classList.add("hidden");
+    $("#app").classList.remove("hidden");
+    renderQueue(); renderSession();
+    if (S.queue.length) loadRow(S.queue.findIndex(r => !labelled(r.measurement_uid)) || 0);
+  };
+  $("#who").addEventListener("keydown", e => { if (e.key === "Enter") $("#startBtn").click(); });
+})();
+
+// ---------------------------------------------------------------- queue
+let cursor = -1;
+let current = null;      // {row, candidate, context}
+let draft = { label: null, confidence: "probable", mechs: [] };
+let committedThisRow = false;
+
+function renderQueue() {
+  const box = $("#queue"); box.innerHTML = "";
+  const done = S.queue.filter(r => labelled(r.measurement_uid)).length;
+  $("#qcount").textContent = S.queue.length ? `${done}/${S.queue.length}` : "0";
+  $("#qbar").style.width = S.queue.length ? (100 * done / S.queue.length) + "%" : "0%";
+
+  const did = S.queue[0]?.sampling_design_id;
+  const dnote = $("#designNote");
+  if (did) {
+    const d = S.designs[did];
+    dnote.innerHTML = `design <b>${did}</b>` + (d?.replicate > 1 ? ` · rep ${d.replicate}` : "");
+    dnote.classList.remove("hidden");
+  } else {
+    dnote.classList.add("hidden");
+  }
+
+  S.queue.forEach((r, i) => {
+    const d = labelled(r.measurement_uid);
+    const n = el("div", "qrow" + (i === cursor ? " active" : "") + (d ? " done" : ""));
+    n.append(el("span", "tick", d ? "✓" : "·"));
+    n.append(el("span", "nm", r.domain || r.input || r.measurement_uid.slice(0, 14)));
+    n.onclick = () => loadRow(i);
+    box.append(n);
+  });
+}
+
+function renderSession() {
+  const c = {};
+  S.labels.filter(l => !l.superseded_by).forEach(l => { c[l.label] = (c[l.label] || 0) + 1; });
+  const parts = Object.entries(c).map(([k, v]) => `${k} <b>${v}</b>`);
+  $("#sessionStats").innerHTML =
+    (parts.length ? parts.join("<br>") : "No labels yet.") +
+    `<br><br>total <b>${S.labels.filter(l => !l.superseded_by).length}</b>`;
+}
+
+// ---------------------------------------------------------------- draw
+const dlg = $("#drawDlg");
+$("#drawBtn").onclick = () => {
+  const today = new Date(), back = new Date(Date.now() - 30 * 864e5);
+  $("#dUntil").value = today.toISOString().slice(0, 10);
+  $("#dSince").value = back.toISOString().slice(0, 10);
+  $("#drawErr").textContent = "";
+  dlg.showModal();
+  loadTestNames();
+};
+$("#drawCancel").onclick = () => dlg.close();
+
+// Reload the test list whenever the frame or country changes — counts are
+// frame-scoped, and a test with volume last month may have none this week.
+["dSince", "dUntil", "dCC"].forEach(id =>
+  $("#" + id).addEventListener("change", loadTestNames));
+
+async function loadTestNames() {
+  const sel = $("#dTests");
+  const keep = new Set([...sel.selectedOptions].map(o => o.value));
+  if (!keep.size) keep.add("web_connectivity");
+  $("#dTestHint").textContent = "loading…";
+  const q = new URLSearchParams({
+    since: $("#dSince").value + "T00:00:00",
+    until: $("#dUntil").value + "T00:00:00",
+  });
+  if ($("#dCC").value.trim()) q.set("probe_cc", $("#dCC").value.trim().toUpperCase());
+  try {
+    const r = await (await fetch(api("/test_names?" + q))).json();
+    const list = r.test_names || [];
+    if (!list.length) { $("#dTestHint").textContent = "none in this frame"; return; }
+    sel.innerHTML = "";
+    list.forEach(t => {
+      const o = document.createElement("option");
+      o.value = t.test_name;
+      o.textContent = `${t.test_name}  ·  ${t.measurements.toLocaleString()} msm  ·  ${t.screen_positive.toLocaleString()} screen+`;
+      o.selected = keep.has(t.test_name);
+      sel.append(o);
+    });
+    // Nothing carried over (e.g. first open in a frame without
+    // web_connectivity): fall back to the biggest test rather than an empty
+    // selection that silently draws everything.
+    if (!sel.selectedOptions.length && sel.options.length) sel.options[0].selected = true;
+    sel.size = Math.min(8, Math.max(3, list.length));
+    $("#dTestHint").textContent = `${list.length} available, by volume`;
+  } catch (e) {
+    $("#dTestHint").textContent = "could not load — using web_connectivity";
+  }
+}
+
+$("#drawGo").onclick = async () => {
+  const strata = [...$("#dStrata").selectedOptions].map(o => o.value);
+  if (!strata.length) { $("#drawErr").textContent = "Pick at least one stratum."; return; }
+  const tests = [...$("#dTests").selectedOptions].map(o => o.value);
+  if (!tests.length) { $("#drawErr").textContent = "Pick at least one test."; return; }
+  const q = new URLSearchParams({
+    strata: strata.join(","),
+    test_name: tests.join(","),
+    replicate: $("#dReplicate").value || "1",
+    limit: $("#dLimit").value,
+    since: $("#dSince").value + "T00:00:00",
+    until: $("#dUntil").value + "T00:00:00",
+  });
+  if ($("#dCC").value.trim()) q.set("probe_cc", $("#dCC").value.trim().toUpperCase());
+  if ($("#dDomain").value.trim()) q.set("domain", $("#dDomain").value.trim());
+
+  $("#drawGo").disabled = true; $("#drawErr").textContent = "Drawing…";
+  try {
+    const r = await fetch(api("/sample?" + q));
+    if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+    const data = await r.json();
+    if (!data.rows.length) { $("#drawErr").textContent = "No rows matched. Widen the frame."; return; }
+    // Record the design verbatim — this is what makes the weights checkable.
+    S.designs[data.design_id] = {
+      design_id: data.design_id,
+      replicate: data.replicate,
+      spec: data.spec,
+      drawn_at: new Date().toISOString(),
+      frame_start: data.frame_start, frame_end: data.frame_end,
+      strata: data.strata,
+    };
+    S.queue = data.rows; save();
+    cursor = -1; renderQueue(); dlg.close(); loadRow(0);
+  } catch (e) {
+    $("#drawErr").textContent = String(e.message || e);
+  } finally { $("#drawGo").disabled = false; }
+};
+
+// ---------------------------------------------------------------- load a row
+async function loadRow(i) {
+  if (i < 0 || i >= S.queue.length) return;
+  cursor = i; committedThisRow = false;
+  draft = { label: null, confidence: "probable", mechs: [] };
+  const row = S.queue[i];
+
+  $("#why").value = ""; $("#mechInput").value = "";
+  syncChoices(); syncConf(); syncMech();
+  gotoStep("verdict");
+  $("#sealed").classList.remove("hidden");
+  $("#reveal").classList.add("hidden"); $("#reveal").innerHTML = "";
+  $("#jTitle").textContent = row.domain || row.input || "measurement";
+  renderQueue();
+
+  const body = $("#mainBody");
+  body.innerHTML = "";
+  body.append(el("div", "banner", "Loading measurement…"));
+
+  try {
+    const cand = await (await fetch(api("/candidate/" + encodeURIComponent(row.measurement_uid)))).json();
+    if (cand.detail) throw new Error(cand.detail);
+    let ctx = null;
+    const host = (cand.observations[0] || {}).hostname;
+    if (host) {
+      const q = new URLSearchParams({
+        hostname: host, probe_cc: row.probe_cc, probe_asn: row.probe_asn,
+        at: row.measurement_start_time, hours: 6,
+      });
+      try { ctx = await (await fetch(api("/context?" + q))).json(); } catch {}
+    }
+    current = { row, candidate: cand, context: ctx };
+    renderCandidate();
+    // Existing label? Re-open it rather than silently double-labelling.
+    const prev = S.labels.find(l => l.measurement_uid === row.measurement_uid && !l.superseded_by);
+    if (prev) restore(prev);
+  } catch (e) {
+    body.innerHTML = "";
+    body.append(el("div", "banner err", "Could not load: " + (e.message || e)));
+  }
+}
+
+// ---------------------------------------------------------------- render
+// DNS is handled separately (see renderDnsGroup): its answers fan out across
+// rows, so it is a set comparison keyed on hostname, not a field-by-field diff.
+// TCP/TLS/HTTP genuinely are per-endpoint, so they stay row-wise.
+// A wide obs row only carries the layers that actually ran: when
+// tcp_failure and tcp_success are both null the row is DNS-only (same test
+// for TLS and HTTP), and rendering an endpoint table for it would compare
+// nothing against nothing while flagging the address columns as divergence.
+const LAYER_HAS = {
+  TCP:  o => o.tcp_success !== null && o.tcp_success !== undefined
+          || o.tcp_failure !== null && o.tcp_failure !== undefined,
+  TLS:  o => [o.tls_failure, o.tls_is_certificate_valid, o.tls_version,
+              o.tls_handshake_last_operation].some(v => v !== null && v !== undefined),
+  HTTP: o => [o.http_failure, o.http_response_status_code, o.http_request_url]
+              .some(v => v !== null && v !== undefined),
+};
+
+const LAYERS = [
+  { name: "TCP",  fields: ["ip", "port", "ip_asn", "ip_as_org_name", "ip_cc", "ip_is_bogon",
+                           "tcp_failure", "tcp_success"] },
+  { name: "TLS",  fields: ["tls_failure", "tls_server_name", "tls_version",
+                           "tls_is_certificate_valid",
+                           "tls_end_entity_certificate_subject_common_name",
+                           "tls_end_entity_certificate_issuer_common_name",
+                           "tls_end_entity_certificate_san_list",
+                           "tls_handshake_last_operation"] },
+  { name: "HTTP", fields: ["http_request_url", "http_failure", "http_response_status_code",
+                           "http_response_body_length", "http_response_body_sha1",
+                           "http_response_header_location", "http_response_header_server"] },
+];
+
+const fmt = v => {
+  if (v === null || v === undefined || v === "") return null;
+  if (Array.isArray(v)) return v.length ? v.join(", ") : null;
+  return String(v);
+};
+
+// The control schema is deliberately thin: per address it records only
+// success/failure per layer (plus the TLS server name). Fields outside this
+// set are simply never collected by the test helper, so their absence on the
+// control side is not disagreement and must not be flagged as one.
+const CONTROL_FIELDS = new Set([
+  "hostname", "ip", "port", "ip_asn", "ip_as_org_name", "ip_as_cc", "ip_cc",
+  "ip_is_bogon", "dns_failure", "dns_success", "tcp_failure", "tcp_success",
+  "tls_failure", "tls_success", "tls_server_name",
+  "http_request_url", "http_failure", "http_success", "http_response_body_length",
+]);
+const NOT_RECORDED = Symbol("not recorded");
+
+// A null *_failure is only meaningful when the layer actually ran: then it is
+// the success signal, and the single most important thing the view can show
+// is "failure none / none" on both sides, explicitly.
+const FAILURE_RAN = {
+  tcp_failure:  { probe: o => o.tcp_success !== null && o.tcp_success !== undefined,
+                  ctrl:  c => c.tcp_success === 1 || c.tcp_success === true },
+  tls_failure:  { probe: o => ["tls_version", "tls_cipher_suite", "tls_is_certificate_valid",
+                               "tls_handshake_last_operation", "tls_t"]
+                              .some(k => o[k] !== null && o[k] !== undefined),
+                  ctrl:  c => c.tls_success === 1 || c.tls_success === true },
+  http_failure: { probe: o => o.http_response_status_code != null || o.http_t != null,
+                  ctrl:  c => c.http_success === 1 || c.http_success === true },
+};
+function probeVal(o, f) {
+  const v = fmt(o[f]);
+  if (v === null && FAILURE_RAN[f] && FAILURE_RAN[f].probe(o)) return "none";
+  return v;
+}
+function ctrlVal(c, f) {
+  if (!CONTROL_FIELDS.has(f)) return NOT_RECORDED;
+  const v = fmt(c[f]);
+  if (v === null && FAILURE_RAN[f] && FAILURE_RAN[f].ctrl(c)) return "none";
+  return v;
+}
+
+function renderCandidate() {
+  const { row, candidate, context } = current;
+  const obs = candidate.observations;
+  const ctrls = candidate.controls || [];
+  const body = $("#mainBody");
+  body.innerHTML = "";
+
+  // subject
+  const sub = el("div", "subject");
+  sub.append(el("span", "eyebrow", row.test_name + " · " + row.measurement_uid));
+  sub.append(el("h2", null, obs[0]?.hostname || row.domain || row.input || "—"));
+  const m = el("div", "meta");
+  m.innerHTML =
+    `<span>probe <b>${row.probe_cc} AS${row.probe_asn}</b></span>` +
+    `<span>resolver <b>AS${row.resolver_asn || "?"}</b>${row.resolver_asn && row.resolver_asn === row.probe_asn ? " (ISP)" : ""}</span>` +
+    `<span>at <b>${String(row.measurement_start_time).replace("T", " ").slice(0, 19)}</b></span>` +
+    `<span>observations <b>${obs.length}</b></span>` +
+    `<span>control rows <b>${ctrls.length}</b></span>`;
+  sub.append(m);
+  body.append(sub);
+
+  // context strip
+  if (context && context.series.length) body.append(renderContext(context));
+
+  // DNS first, grouped by hostname: the answer SET is the unit of comparison.
+  // Within a hostname, one section per resolver. web_connectivity 0.5 resolves
+  // through several (system, udp to specific resolvers, DoH/DoT), and pooling
+  // their answers into one set hides exactly the signal that design exists to
+  // capture: the ISP resolver disagreeing with an encrypted one. Each
+  // resolver's set is compared against the same control.
+  const probeByHost = groupBy(obs, o => o.hostname || "");
+  const ctrlByHost  = groupBy(ctrls, c => c.hostname || "");
+  const hosts = [...new Set([...probeByHost.keys(), ...ctrlByHost.keys()])].filter(Boolean);
+  hosts.forEach(h => {
+    const cRows = ctrlByHost.get(h) || [];
+    // Only rows that carry DNS data belong in the answer-set comparison.
+    const pRows = (probeByHost.get(h) || []).filter(r =>
+      r.dns_answer != null || r.dns_failure != null || r.dns_engine != null);
+    if (!pRows.length) {
+      if (cRows.length) body.append(renderDnsGroup(h, [], cRows, null));
+      return;
+    }
+    const byResolver = groupBy(pRows, r =>
+      (r.dns_engine || "unknown") + "\u0000" + (r.dns_engine_resolver_address || ""));
+    const single = byResolver.size <= 1;
+    byResolver.forEach((rows, key) => {
+      const [eng, addr] = key.split("\u0000");
+      body.append(renderDnsGroup(h, rows, cRows,
+        single ? null : eng + (addr ? " · " + addr : "")));
+    });
+  });
+
+  // Then the endpoint layers, which really are per-address. Deduplicate both
+  // sides first, and never borrow a control row from a different address.
+  const pEnds = endpoints(obs);
+  const cEnds = endpoints(ctrls);
+
+  pEnds.forEach(o => {
+    const ctrl = matchEndpoint(o, cEnds);
+    const tag = (pEnds.length > 1 ? `${o.ip}${o.port ? ":" + o.port : ""}` : "")
+              + (o._n > 1 ? `  ×${o._n}` : "");
+    LAYERS.forEach(layer => {
+      if (!LAYER_HAS[layer.name](o)) return;
+      const rows = layer.fields
+        .map(f => [f, probeVal(o, f), ctrl ? ctrlVal(ctrl, f) : undefined])
+        .filter(([, p, c]) => p !== null ||
+                (c !== undefined && c !== null && c !== NOT_RECORDED));
+      if (!rows.length) return;
+      body.append(renderLayer(layer.name, rows, tag, !!ctrl));
+    });
+  });
+
+  // What the control reached and the probe never attempted. Shown once, in its
+  // own panel, rather than smeared across probe rows it does not describe.
+  // "Attempted" means an endpoint layer actually ran: a DNS-only row means the
+  // probe resolved the address but never connected, so a control connection to
+  // it still belongs here.
+  const attempted = pEnds.filter(o =>
+    LAYER_HAS.TCP(o) || LAYER_HAS.TLS(o) || LAYER_HAS.HTTP(o));
+  const untried = cEnds.filter(c => !attempted.some(o => o.ip === c.ip));
+  if (untried.length) body.append(renderControlOnly(untried));
+
+  if (!ctrls.length) {
+    body.append(el("div", "banner",
+      "No control rows for this measurement. Without a control you are guessing " +
+      "at whether the failure is interference — X (unusable) is often the honest call."));
+  }
+}
+
+// Endpoint identity. TCP/TLS/HTTP results belong to one (address, port) — a
+// control row for a different address says nothing about this one.
+const endpointKey = r => `${r.ip || ""}|${r.port ?? ""}`;
+
+// Exact-duplicate collapse. obs_web_ctrl commonly carries several rows for the
+// same endpoint (one per contributing observation), and obs_web does the same
+// when a target is retried. Collapsing on the outcome fields as well as the
+// address means identical rows merge while genuinely different outcomes for
+// the same address stay visible as separate panels.
+const OUTCOME_FIELDS = [
+  "tcp_failure", "tcp_success", "tls_failure", "tls_is_certificate_valid",
+  "tls_end_entity_certificate_fingerprint", "http_failure",
+  "http_response_status_code", "http_response_body_sha1",
+];
+
+function endpoints(rows) {
+  const m = new Map();
+  rows.forEach(r => {
+    if (!r.ip) return;                       // no address, no endpoint
+    const k = endpointKey(r) + "|" + OUTCOME_FIELDS.map(f => String(r[f] ?? "")).join("|");
+    const prev = m.get(k);
+    if (prev) { prev._n++; return; }
+    m.set(k, { ...r, _n: 1 });
+  });
+  return [...m.values()];
+}
+
+// Strict: same address, and same port when both sides record one.
+//
+// The previous version fell back to matching on hostname, then to "if there is
+// only one control row, use it". Both are wrong in the same way: when the
+// probe fails at DNS or resolves to addresses the control never saw, every
+// probe observation matches the SAME control row, and that one row's results
+// get rendered once per probe observation. That is the duplication — the
+// control was never repeated, it was reused as a stand-in for endpoints it
+// knows nothing about.
+function matchEndpoint(o, ctrlEndpoints) {
+  return ctrlEndpoints.find(c =>
+    c.ip === o.ip && (c.port == null || o.port == null || c.port === o.port)
+  ) || null;
+}
+
+function groupBy(rows, keyFn) {
+  const m = new Map();
+  rows.forEach(r => {
+    const k = keyFn(r);
+    if (!m.has(k)) m.set(k, []);
+    m.get(k).push(r);
+  });
+  return m;
+}
+
+// A DNS answer, from either side. obs_web carries the resolved address in
+// dns_answer; obs_web_ctrl carries it as ip in most pipeline versions and as
+// dns_answer in some, so read both.
+function toAnswer(r, side) {
+  // Control rows exist for every address the TCP/TLS control checked, which
+  // includes addresses only the *probe* resolved. dns_success === 1 is the
+  // only marker that the control DNS query itself returned this address;
+  // null means "checked over TCP/TLS, never seen by control DNS". Counting
+  // those as control answers would echo the probe's own answers back as
+  // agreement, hiding exactly the injected-answer case.
+  if (side === "control" && !(r.dns_success === 1 || r.dns_success === true))
+    return null;
+  const addr = r.dns_answer || (side === "control" ? r.ip : null);
+  if (!addr) return null;
+  return {
+    addr: String(addr),
+    type: r.dns_answer_type || r.dns_query_type || "",
+    asn: r.dns_answer_asn ?? r.ip_asn ?? null,
+    org: r.dns_answer_as_org_name || r.ip_as_org_name || "",
+    cc: r.ip_cc || r.ip_as_cc || "",
+    bogon: r.ip_is_bogon === true || r.ip_is_bogon === 1,
+  };
+}
+
+function answerSet(rows, side) {
+  const byAddr = new Map();
+  rows.forEach(r => {
+    const a = toAnswer(r, side);
+    if (!a) return;
+    // Later rows may carry richer geo/ASN fields; merge rather than overwrite.
+    const prev = byAddr.get(a.addr);
+    byAddr.set(a.addr, prev ? {
+      ...prev,
+      asn: prev.asn ?? a.asn,
+      org: prev.org || a.org,
+      cc: prev.cc || a.cc,
+      type: prev.type || a.type,
+      bogon: prev.bogon || a.bogon,
+    } : a);
+  });
+  return byAddr;
+}
+
+const firstNonNull = (rows, f) => {
+  for (const r of rows) if (r[f] !== null && r[f] !== undefined && r[f] !== "") return r[f];
+  return null;
+};
+
+function renderDnsGroup(hostname, probeRows, ctrlRows, resolverTag) {
+  const P = answerSet(probeRows, "probe");
+  const C = answerSet(ctrlRows, "control");
+
+  const wrap = el("div", "layer");
+  const h = el("header");
+  h.append(el("span", "eyebrow", "DNS" + (resolverTag ? " · " + resolverTag : "")));
+  h.append(el("span", "eyebrow", hostname));
+  wrap.append(h);
+
+  const pFail = firstNonNull(probeRows, "dns_failure");
+  const cFail = firstNonNull(ctrlRows, "dns_failure");
+
+  // Overlap summary. IP-exact overlap alone is too strict — CDN and geo-DNS
+  // rotate addresses legitimately, which is the documented reason
+  // answer_unmatched is the prime false-positive suspect. ASN and org overlap
+  // are what separate "different IP, same CDN" from "different network".
+  const pAddrs = [...P.keys()], cAddrs = [...C.keys()];
+  const ipHits = pAddrs.filter(a => C.has(a));
+  const pAsns = new Set([...P.values()].map(a => a.asn).filter(x => x != null));
+  const cAsns = new Set([...C.values()].map(a => a.asn).filter(x => x != null));
+  const asnHits = [...pAsns].filter(a => cAsns.has(a));
+  const pOrgs = new Set([...P.values()].map(a => a.org).filter(Boolean));
+  const cOrgs = new Set([...C.values()].map(a => a.org).filter(Boolean));
+  const orgHits = [...pOrgs].filter(o => cOrgs.has(o));
+
+  const verdictless = (hits, total, haveCtrl) => {
+    if (!haveCtrl) return `<b class="na">no control</b>`;
+    if (!total) return `<b class="na">none</b>`;
+    return hits ? `<b class="yes">${hits} of ${total}</b>` : `<b class="no">0 of ${total}</b>`;
+  };
+  const haveCtrl = cAddrs.length > 0 || cFail !== null;
+
+  const sum = el("div", "overlap");
+  sum.innerHTML =
+    `<span>answers <b>${pAddrs.length}</b> probe / <b>${cAddrs.length}</b> control</span>` +
+    `<span>IP overlap ${verdictless(ipHits.length, pAddrs.length, haveCtrl)}</span>` +
+    `<span>ASN overlap ${verdictless(asnHits.length, pAsns.size, haveCtrl)}</span>` +
+    `<span>org overlap ${verdictless(orgHits.length, pOrgs.size, haveCtrl)}</span>`;
+  wrap.append(sum);
+
+  // Resolver + query context, useful and never a verdict.
+  const eng = firstNonNull(probeRows, "dns_engine");
+  const engAddr = firstNonNull(probeRows, "dns_engine_resolver_address");
+  const qtypes = [...new Set(probeRows.map(r => r.dns_query_type).filter(Boolean))];
+  if (eng || engAddr || qtypes.length) {
+    const ctx = el("div", "overlap");
+    ctx.innerHTML =
+      (eng ? `<span>engine <b>${eng}</b></span>` : "") +
+      (engAddr ? `<span>resolver <b>${engAddr}</b></span>` : "") +
+      (qtypes.length ? `<span>queries <b>${qtypes.join(", ")}</b></span>` : "");
+    wrap.append(ctx);
+  }
+
+  if (pFail || cFail) {
+    const f = el("div", "dns-fail");
+    f.innerHTML =
+      `<span class="p">probe: ${pFail || "resolved"}</span>` +
+      ` &nbsp;·&nbsp; <span class="c">control: ${haveCtrl ? (cFail || "resolved") : "no control"}</span>`;
+    wrap.append(f);
+  }
+
+  if (!pAddrs.length && !cAddrs.length) {
+    wrap.append(el("div", "no-ctrl", "No answers recorded on either side."));
+    return wrap;
+  }
+
+  // One row per distinct address across both sides, probe-only first — that
+  // is the set an analyst actually has to explain.
+  const all = [...new Set([...pAddrs, ...cAddrs])].sort((a, b) => {
+    const rank = x => (P.has(x) && C.has(x)) ? 1 : (P.has(x) ? 0 : 2);
+    return rank(a) - rank(b) || a.localeCompare(b);
+  });
+
+  const t = el("table", "answers");
+  const thead = el("thead");
+  thead.innerHTML =
+    `<tr><th>Seen by</th><th>Address</th><th>ASN</th><th>Organisation</th><th>Geo</th></tr>`;
+  t.append(thead);
+  const tb = el("tbody");
+  all.forEach(addr => {
+    const a = P.get(addr) || C.get(addr);
+    const inP = P.has(addr), inC = C.has(addr);
+    const kind = inP && inC ? "both" : (inP ? "probe-only" : "control-only");
+    const tr = el("tr", kind === "probe-only" && haveCtrl ? "probe-only" : "");
+
+    const side = el("td");
+    const pill = el("span", "pill " + kind,
+      kind === "both" ? "both" : kind === "probe-only" ? "probe" : "control");
+    side.append(pill);
+    tr.append(side);
+
+    const ansTd = el("td", "ans", addr);
+    if (a.bogon) ansTd.append(el("span", "flag", "bogon"));
+    if (a.type) ansTd.append(el("span", "flag", a.type));
+    tr.append(ansTd);
+
+    tr.append(el("td", "dim", a.asn != null ? "AS" + a.asn : "—"));
+    tr.append(el("td", "dim", a.org || "—"));
+    tr.append(el("td", "dim", a.cc || "—"));
+    tb.append(tr);
+  });
+  t.append(tb);
+  wrap.append(t);
+
+  if (!haveCtrl) {
+    const checked = new Set(ctrlRows.filter(r => r.ip).map(r => r.ip)).size;
+    wrap.append(el("div", "no-ctrl", checked
+      ? `No control DNS answers for this hostname. The control did check ${checked} ` +
+        `address${checked > 1 ? "es" : ""} over TCP/TLS, but those are the probe's own ` +
+        `answers being probed, not an independent resolution — nothing to compare the set against.`
+      : "No control answers for this hostname — nothing to compare the set against."));
+  }
+  return wrap;
+}
+
+function renderLayer(name, rows, subtitle, hasCtrl) {
+  const wrap = el("div", "layer");
+  const h = el("header");
+  h.append(el("span", "eyebrow", name));
+  if (subtitle) h.append(el("span", "eyebrow", subtitle));
+  wrap.append(h);
+
+  const t = el("table", "diff");
+  const thead = el("thead");
+  thead.innerHTML = `<tr><th></th><th class="p">Probe saw</th><th class="c">Control saw</th></tr>`;
+  t.append(thead);
+  const tb = el("tbody");
+  rows.forEach(([k, p, c]) => {
+    const comparable = hasCtrl && c !== undefined && c !== NOT_RECORDED;
+    const differs = comparable && (p || "") !== (c || "");
+    const tr = el("tr", differs ? "differs" : "");
+    tr.append(el("td", "k", k.replace(/^(dns|tcp|tls|http)_/, "")));
+    const pc = el("td", "v probe" + (p === null ? " nil" : ""), p === null ? "—" : p);
+    const cTxt = c === undefined ? "no control"
+               : c === NOT_RECORDED ? "not recorded"
+               : c === null ? "—" : c;
+    const cc = el("td", "v control" +
+                  ((c === null || c === undefined || c === NOT_RECORDED) ? " nil" : ""), cTxt);
+    if (c === NOT_RECORDED)
+      cc.title = "The control never collects this field; absence is not disagreement.";
+    if (k.endsWith("failure")) {
+      if (p === "none") pc.classList.add("ok");
+      if (c === "none") cc.classList.add("ok");
+    }
+    tr.append(pc, cc);
+    tb.append(tr);
+  });
+  t.append(tb);
+  wrap.append(t);
+  if (!hasCtrl) {
+    wrap.append(el("div", "no-ctrl",
+      "The control never tried this address, so there is nothing to compare " +
+      "against here. That is itself worth noting: it usually means DNS sent " +
+      "the probe somewhere the control never went."));
+  }
+  return wrap;
+}
+
+// Endpoints the control reached that the probe never attempted. Rendered once,
+// as a list, because they describe the control's own connections — not the
+// probe's, and not any particular probe observation.
+function renderControlOnly(rows) {
+  const wrap = el("div", "layer");
+  const h = el("header");
+  h.append(el("span", "eyebrow", "Control reached, probe never tried"));
+  h.append(el("span", "eyebrow", `${rows.length} address${rows.length === 1 ? "" : "es"}`));
+  wrap.append(h);
+
+  const t = el("table", "answers");
+  const thead = el("thead");
+  thead.innerHTML =
+    `<tr><th>Address</th><th>TCP</th><th>TLS</th><th>HTTP</th><th>Organisation</th></tr>`;
+  t.append(thead);
+  const tb = el("tbody");
+  rows.forEach(c => {
+    const tr = el("tr");
+    const a = el("td", "ans", `${c.ip}${c.port ? ":" + c.port : ""}`);
+    if (c._n > 1) a.append(el("span", "flag", "×" + c._n));
+    tr.append(a);
+    tr.append(el("td", "dim", c.tcp_failure || (c.tcp_success ? "ok" : "—")));
+    tr.append(el("td", "dim", c.tls_failure || (c.tls_success ? "ok" : "—")));
+    tr.append(el("td", "dim",
+      c.http_failure || (c.http_response_status_code ? String(c.http_response_status_code) : "—")));
+    tr.append(el("td", "dim", c.ip_as_org_name || "—"));
+    tb.append(tr);
+  });
+  t.append(tb);
+  wrap.append(t);
+  return wrap;
+}
+
+const CTX_COLORS = {};
+function ctxColor(k) {
+  if (k === "ok") return "var(--agree)";
+  if (!CTX_COLORS[k]) {
+    const palette = ["#ff7359", "#ffb84d", "#6ec7de", "#9d84f7", "#e885bd", "#c3cc55"];
+    CTX_COLORS[k] = palette[Object.keys(CTX_COLORS).length % palette.length];
+  }
+  return CTX_COLORS[k];
+}
+
+function renderContext(ctx) {
+  const wrap = el("div", "layer");
+  const h = el("header");
+  h.append(el("span", "eyebrow", `Same host, same network, ±${ctx.window_hours}h`));
+  wrap.append(h);
+
+  const byTs = {};
+  ctx.series.forEach(s => {
+    const t = String(s.ts).slice(0, 13);
+    (byTs[t] = byTs[t] || []).push(s);
+  });
+  const keys = Object.keys(byTs).sort();
+  const max = Math.max(...keys.map(t => byTs[t].reduce((a, s) => a + s.count, 0)), 1);
+
+  const strip = el("div", "ctx");
+  strip.style.padding = "10px";
+  keys.forEach(t => {
+    const bar = el("div", "bar");
+    bar.title = t.replace("T", " ") + ":00\n" +
+      byTs[t].map(s => `${s.failure_str} ×${s.count} (res AS${s.resolver_asn})`).join("\n");
+    byTs[t].forEach(s => {
+      const seg = el("div", "seg");
+      seg.style.height = (46 * s.count / max) + "px";
+      seg.style.background = ctxColor(s.failure_str);
+      bar.append(seg);
+    });
+    strip.append(bar);
+  });
+  wrap.append(strip);
+
+  const legend = el("div", "ctx-legend");
+  legend.style.padding = "0 10px 10px";
+  [...new Set(ctx.series.map(s => s.failure_str))].forEach(k => {
+    const sp = el("span");
+    sp.innerHTML = `<i style="background:${ctxColor(k)}"></i>${k}`;
+    legend.append(sp);
+  });
+  wrap.append(legend);
+  return wrap;
+}
+
+// ---------------------------------------------------------------- mechanism
+//
+// How interference was implemented, as opposed to whether it happened. This is
+// deliberately NOT the rule-id vocabulary: a corpus labelled with rule ids can
+// only tell you a rule reproduces itself, and rule ids change as rules split.
+// Labels use this taxonomy, predictions use rule ids, and evaluation is a
+// mapping between them.
+//
+// Paths are <layer>.<action>.<qualifier>. Every prefix is itself a valid
+// label — `tls.mitm` and bare `tls` are both legitimate — so internal nodes
+// are selectable, and mean "this layer/action, sub-type not identified".
+// The qualifier's meaning depends on the action; it is a taxonomy, not a
+// grammar.
+const MECHANISM_TAXONOMY = "v1";
+const MECHANISMS = [
+  { p: "dns" },
+  { p: "dns.injection" },
+  { p: "dns.injection.blockpage",  d: "answer is a known blockpage address" },
+  { p: "dns.injection.bogon",      d: "answer is a bogon or provider-internal address" },
+  { p: "dns.injection.other",      d: "injected, but neither of the above" },
+  { p: "dns.nxdomain",             d: "NXDOMAIN for a name that resolves elsewhere" },
+  { p: "dns.refused",              d: "REFUSED" },
+  { p: "dns.timeout",              d: "no answer" },
+
+  { p: "tcp" },
+  { p: "tcp.reset",                d: "RST during connection establishment" },
+  { p: "tcp.timeout",              d: "SYN unanswered" },
+  { p: "tcp.refused",              d: "RST in response to SYN" },
+
+  { p: "tls" },
+  { p: "tls.reset" },
+  { p: "tls.reset.sni",            d: "RST after ClientHello, triggered by the server name" },
+  { p: "tls.reset.other",          d: "RST during handshake, trigger unidentified" },
+  { p: "tls.timeout",              d: "handshake stalls" },
+  { p: "tls.mitm" },
+  { p: "tls.mitm.self_signed",     d: "presented certificate is self-signed" },
+  { p: "tls.mitm.ca_signed",       d: "validly signed, but for an unexpected name or issuer" },
+  { p: "tls.throttle.sni",         d: "throttling keyed on the server name", warn: "unmeasurable today" },
+
+  { p: "http" },
+  { p: "http.blockpage",           d: "a block page is served" },
+  { p: "http.redirect",            d: "redirect to a block page" },
+  { p: "http.error",               d: "status-code refusal (403 and similar)" },
+  { p: "http.reset.host",          d: "RST after the request line or Host header" },
+  { p: "http.timeout",             d: "no response" },
+  { p: "http.throttle.host",       d: "throttling keyed on the Host header", warn: "unmeasurable today" },
+
+  { p: "ip" },
+  { p: "ip.unreachable",           d: "ICMP unreachable or no route" },
+  { p: "ip.prefix_null_route",     d: "prefix is null-routed", warn: "needs co-affected evidence" },
+];
+
+const MECH_BY_PATH = new Map(MECHANISMS.map(m => [m.p, m]));
+const isInternal = p => MECHANISMS.some(m => m.p !== p && m.p.startsWith(p + "."));
+
+// --- mechanism chips -------------------------------------------------------
+// Multiple mechanisms per label: censorship co-occurs (defence in depth is
+// normal practice), so a blocked call carries every distinct technique the
+// evidence supports. Redundant ancestor/descendant pairs auto-collapse to the
+// deeper path, since a prefix means "not narrowed further".
+function renderChips() {
+  const box = $("#mechChips");
+  box.innerHTML = "";
+  draft.mechs.forEach(pth => {
+    const c = document.createElement("span");
+    c.className = "chip";
+    c.innerHTML = `<span>${pth}</span>`;
+    const x = document.createElement("button");
+    x.type = "button"; x.textContent = "×"; x.title = "remove " + pth;
+    x.onclick = () => { draft.mechs = draft.mechs.filter(m => m !== pth); syncMech(); };
+    c.append(x);
+    box.append(c);
+  });
+}
+
+function addMech(pth) {
+  const note = $("#mechNote");
+  if (draft.mechs.includes(pth)) return;
+  const deeper = draft.mechs.find(m => m.startsWith(pth + "."));
+  if (deeper) {
+    note.classList.remove("hidden");
+    note.innerHTML = `already carrying the narrower <b>${deeper}</b>; the prefix adds nothing`;
+    return;
+  }
+  draft.mechs = draft.mechs.filter(m => !pth.startsWith(m + "."));  // replace ancestors
+  draft.mechs.push(pth);
+  syncMech();
+}
+
+function syncMech() {
+  renderChips();
+  const note = $("#mechNote");
+  const fams = new Set(draft.mechs.map(m => m.split(".")[0]));
+  const warned = draft.mechs.map(m => MECH_BY_PATH.get(m)).filter(m => m && m.warn);
+  let html = "";
+  if (draft.mechs.length > fams.size)
+    html += `two mechanisms in one layer: legitimate when the evidence genuinely
+      shows both (an injected A next to an NXDOMAIN AAAA, say), but the
+      rationale must name which evidence supports which.`;
+  if (warned.length)
+    html += (html ? "<br>" : "") + warned.map(m =>
+      `<span style="color:var(--probe)">${m.p}: ${m.warn} — pick this only if you have evidence outside this view</span>`).join("<br>");
+  note.classList.toggle("hidden", !html);
+  note.innerHTML = html;
+}
+
+// type-ahead dropdown
+let mechHl = 0, mechMatches = [];
+function mechFilter(q) {
+  q = q.trim().toLowerCase();
+  mechMatches = MECHANISMS.filter(m =>
+    !draft.mechs.includes(m.p) &&
+    (m.p.includes(q) || (m.d || "").toLowerCase().includes(q)));
+  mechHl = Math.min(mechHl, Math.max(0, mechMatches.length - 1));
+  const list = $("#mechList");
+  list.classList.toggle("hidden", mechMatches.length === 0);
+  list.innerHTML = "";
+  mechMatches.slice(0, 14).forEach((m, i) => {
+    const div = document.createElement("div");
+    div.className = "mi" + (i === mechHl ? " hl" : "");
+    const pretty = q ? m.p.replace(q, `<b style="color:var(--probe)">${q}</b>`) : m.p;
+    const desc = m.d || (isInternal(m.p) ? "sub-type not identified" : "");
+    div.innerHTML = `<span class="pth">${pretty}</span>` +
+      (desc ? `<span class="d">${desc}</span>` : "") +
+      (m.warn ? `<span class="d" style="color:var(--probe)">[${m.warn}]</span>` : "");
+    div.onmousedown = e => { e.preventDefault(); pickMech(i); };
+    list.append(div);
+  });
+}
+function pickMech(i) {
+  const m = mechMatches[i];
+  if (!m) return;
+  addMech(m.p);
+  $("#mechInput").value = "";
+  mechHl = 0; mechFilter("");
+  $("#mechInput").focus();
+}
+$("#mechInput").addEventListener("input", () => { mechHl = 0; mechFilter($("#mechInput").value); });
+$("#mechInput").addEventListener("focus", () => mechFilter($("#mechInput").value));
+$("#mechInput").addEventListener("blur", () => setTimeout(() => $("#mechList").classList.add("hidden"), 150));
+$("#mechInput").addEventListener("keydown", e => {
+  const input = $("#mechInput");
+  if (e.key === "ArrowDown") { mechHl = Math.min(mechHl + 1, Math.min(mechMatches.length, 14) - 1); mechFilter(input.value); e.preventDefault(); }
+  else if (e.key === "ArrowUp") { mechHl = Math.max(mechHl - 1, 0); mechFilter(input.value); e.preventDefault(); }
+  else if (e.key === "Tab" && input.value.trim()) { pickMech(mechHl); e.preventDefault(); }
+  else if (e.key === "Enter") {
+    e.preventDefault();
+    if (input.value.trim()) pickMech(mechHl);
+    else gotoStep("confidence");                 // empty ⏎ moves on
+  }
+  else if (e.key === "Backspace" && !input.value) { draft.mechs.pop(); syncMech(); }
+  else if (e.key === "Escape") { input.blur(); gotoStep("verdict"); e.preventDefault(); }
+});
+
+// ---------------------------------------------------------------- judgment
+function syncChoices() {
+  document.querySelectorAll(".choice").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.label === draft.label)));
+  $("#commitBtn").disabled = !draft.label || !current;
+}
+function syncConf() {
+  document.querySelectorAll("#confGroup button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.conf === draft.confidence)));
+}
+
+document.querySelectorAll(".choice").forEach(b => {
+  b.onclick = () => { draft.label = b.dataset.label; syncChoices(); };
+});
+document.querySelectorAll("#confGroup button").forEach(b => {
+  b.onclick = () => { draft.confidence = b.dataset.conf; syncConf(); };
+});
+$("#commitBtn").onclick = () => commit();
+
+// --- keyboard flow ---------------------------------------------------------
+// The panel is a stepped flow: Verdict -> Mechanisms (blocked only) ->
+// Confidence -> Rationale -> commit. Each answer advances the step and moves
+// focus, so a full label is B, type-mech, enter, enter-or-digit, one line,
+// enter, enter-for-next. The ribbon at the top shows where you are; clicking
+// a ribbon step or pressing M / R jumps.
+const FLOW = ["verdict", "mechanism", "confidence", "rationale"];
+let flowStep = "verdict";
+
+function gotoStep(name) {
+  if (name === "mechanism" && draft.label !== "blocked") name = "confidence";
+  flowStep = name;
+  const past = FLOW.indexOf(name);
+  document.querySelectorAll("#flow li").forEach(li => {
+    const i = FLOW.indexOf(li.dataset.step);
+    li.classList.toggle("on", li.dataset.step === name);
+    li.classList.toggle("done", i < past);
+    li.classList.toggle("skip", li.dataset.step === "mechanism" && draft.label !== null && draft.label !== "blocked");
+  });
+  $("#mechField").classList.toggle("dim", draft.label !== null && draft.label !== "blocked");
+  if (name === "mechanism") $("#mechInput").focus();
+  else if (name === "rationale") $("#why").focus();
+  else if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+}
+document.querySelectorAll("#flow li").forEach(li => {
+  li.onclick = () => gotoStep(li.dataset.step);
+});
+
+function stepBack() {
+  if (flowStep === "rationale") gotoStep("confidence");
+  else if (flowStep === "confidence") gotoStep(draft.label === "blocked" ? "mechanism" : "verdict");
+  else if (flowStep === "mechanism") gotoStep("verdict");
+}
+
+// Rationale: plain Enter commits (one-liners are the common case),
+// Shift+Enter inserts the newline.
+$("#why").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { commit(); e.preventDefault(); }
+  else if (e.key === "Escape") { $("#why").blur(); gotoStep("confidence"); e.preventDefault(); }
+});
+
+document.addEventListener("keydown", e => {
+  if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) commit();
+    return;
+  }
+  if ($("#app").classList.contains("hidden")) return;
+  if (e.key === "?") { showGuide(); e.preventDefault(); return; }
+  const map = { b: "blocked", d: "down", o: "ok", u: "unadjudicated", x: "unusable" };
+  const k = e.key.toLowerCase();
+  if (map[k]) {
+    draft.label = map[k]; syncChoices();
+    gotoStep(map[k] === "blocked" ? "mechanism" : "confidence");
+    e.preventDefault();
+  }
+  else if (k === "1") { draft.confidence = "certain";   syncConf(); if (flowStep === "confidence") gotoStep("rationale"); }
+  else if (k === "2") { draft.confidence = "probable";  syncConf(); if (flowStep === "confidence") gotoStep("rationale"); }
+  else if (k === "3") { draft.confidence = "uncertain"; syncConf(); if (flowStep === "confidence") gotoStep("rationale"); }
+  else if (k === "m") { gotoStep("mechanism"); e.preventDefault(); }
+  else if (k === "r") { gotoStep("rationale"); e.preventDefault(); }
+  else if (e.key === "Escape") { stepBack(); }
+  else if (e.key === "Enter") {
+    if (committedThisRow) nextUnlabelled();
+    else if (flowStep === "confidence") gotoStep("rationale");
+    else commit();
+    e.preventDefault();
+  }
+  else if (k === "n") { nextUnlabelled(); }
+});
+
+async function commit() {
+  if (!draft.label || !current) return;
+  const { row } = current;
+
+  if (draft.label !== "unusable" && !$("#why").value.trim()) {
+    $("#why").focus();
+    $("#why").placeholder = "Required — name the specific evidence you used.";
+    return;
+  }
+  if (draft.label === "blocked" && draft.mechs.length === 0) {
+    // Always satisfiable: a bare layer such as `tls` is a valid label meaning
+    // "interference here, mechanism not narrowed further".
+    gotoStep("mechanism");
+    $("#mechNote").classList.remove("hidden");
+    $("#mechNote").innerHTML =
+      '<span style="color:var(--diverge)">A blocked call needs at least one ' +
+      'mechanism. If you cannot narrow it, add the bare layer.</span>';
+    return;
+  }
+
+  // Supersede rather than overwrite.
+  const prev = S.labels.find(l => l.measurement_uid === row.measurement_uid && !l.superseded_by);
+  const rec = {
+    label_id: uuid(),
+    measurement_uid: row.measurement_uid,
+    probe_cc: row.probe_cc, probe_asn: row.probe_asn,
+    resolver_asn: row.resolver_asn,
+    target: row.domain || row.input || "",
+    test_name: row.test_name,
+    observed_at: row.measurement_start_time,
+
+    label: draft.label,
+    label_confidence: draft.confidence,
+    // Only a blocked call carries mechanisms; multiple entries mean the
+    // evidence shows co-occurring techniques, one entry per technique.
+    mechanisms: draft.label === "blocked" ? [...draft.mechs] : [],
+    mechanism_taxonomy: MECHANISM_TAXONOMY,
+    label_source: "analyst",
+    adjudicator: S.adjudicator,
+    adjudicated_at: new Date().toISOString(),
+    rationale: $("#why").value.trim(),
+
+    sampling_stratum: row.sampling_stratum,
+    sampling_weight: row.sampling_weight,
+    sampling_design_id: row.sampling_design_id,
+    screen_kind: row.screen_kind,
+
+    blinded: true,
+    superseded_by: null,
+    supersede_reason: null,
+  };
+  if (prev) { prev.superseded_by = rec.label_id; prev.supersede_reason = "re-adjudicated"; }
+  S.labels.push(rec); save();
+  committedThisRow = true;
+  // Drop focus on success so the post-commit keys work immediately: N or Enter
+  // goes to the next row instead of typing into the rationale box or
+  // re-activating the commit button. Validation failures above keep their
+  // deliberate focus.
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  renderQueue(); renderSession();
+  await showReveal(rec);
+}
+
+function restore(prev) {
+  draft.label = prev.label; draft.confidence = prev.label_confidence;
+  $("#why").value = prev.rationale || "";
+  draft.mechs = prev.mechanisms || (prev.mechanism ? [prev.mechanism] : []);
+  syncChoices(); syncConf(); syncMech();
+  showReveal(prev);
+}
+
+async function showReveal(rec) {
+  $("#sealed").classList.add("hidden");
+  const box = $("#reveal");
+  box.classList.remove("hidden");
+  box.innerHTML = "<span class='eyebrow'>Pipeline verdict</span><p class='hint'>Loading…</p>";
+  try {
+    const r = await (await fetch(api("/reveal/" + encodeURIComponent(rec.measurement_uid)))).json();
+    const a = r.analysis, f = r.fastpath;
+    const maxBlocked = a ? Math.max(a.loni.dns.blocked || 0, a.loni.tcp.blocked || 0, a.loni.tls.blocked || 0) : null;
+    const pipelineSaysBlocked = maxBlocked !== null && maxBlocked >= 0.5;
+    const agrees = (rec.label === "blocked") === pipelineSaysBlocked;
+
+    box.innerHTML = "";
+    box.className = "reveal-box";
+    box.append(el("span", "eyebrow", "Pipeline verdict"));
+    if (a && ["blocked", "down", "ok"].includes(rec.label)) {
+      const flag = el("div", "agree-flag " + (agrees ? "same" : "diff"),
+        agrees ? "Agrees with your call" : "Disagrees with your call — worth a look");
+      flag.style.marginTop = "8px";
+      box.append(flag);
+    }
+    const dl = el("dl");
+    if (a) {
+      dl.innerHTML =
+        `<dt>top_probe_analysis</dt><dd>${a.top_probe_analysis || "—"}</dd>` +
+        `<dt>LoNI blocked (dns / tcp / tls)</dt><dd>` +
+          `${(a.loni.dns.blocked ?? 0).toFixed(2)} / ${(a.loni.tcp.blocked ?? 0).toFixed(2)} / ${(a.loni.tls.blocked ?? 0).toFixed(2)}</dd>` +
+        `<dt>top failures</dt><dd>${[a.top_dns_failure, a.top_tcp_failure, a.top_tls_failure].filter(Boolean).join(" · ") || "—"}</dd>`;
+    } else {
+      dl.innerHTML = "<dt>analysis</dt><dd>no row in analysis_web_measurement</dd>";
+    }
+    if (f) dl.innerHTML += `<dt>fastpath</dt><dd>anomaly ${f.anomaly} · confirmed ${f.confirmed}</dd>`;
+    box.append(dl);
+    box.append(el("p", "hint", "These weights are hand-set and uncalibrated — a claim to check, not the answer. Changed your mind? Re-label and commit again; the old label is superseded, not erased."));
+    const nb = el("button", "btn", "Next unlabelled  (N)");
+    nb.style.width = "100%"; nb.style.marginTop = "10px";
+    nb.onclick = nextUnlabelled;
+    box.append(nb);
+  } catch (e) {
+    box.innerHTML = "<span class='eyebrow'>Pipeline verdict</span>" +
+      "<p class='hint'>Could not load: " + (e.message || e) + "</p>";
+  }
+}
+
+function nextUnlabelled() {
+  const start = cursor + 1;
+  for (let i = 0; i < S.queue.length; i++) {
+    const j = (start + i) % S.queue.length;
+    if (!labelled(S.queue[j].measurement_uid)) return loadRow(j);
+  }
+  $("#mainBody").innerHTML = "";
+  $("#mainBody").append(el("div", "banner",
+    "Queue finished. Export your labels, then draw another queue."));
+}
+
+// ---------------------------------------------------------------- export
+$("#exportBtn").onclick = () => {
+  const payload = {
+    export_version: "1",
+    exported_at: new Date().toISOString(),
+    adjudicator: S.adjudicator,
+    note: "Per-measurement labels. Sampling designs included so weights are " +
+          "reconstructable. Superseded labels retained deliberately.",
+    sampling_designs: S.designs,
+    labels: S.labels,
+  };
+  $("#expText").value = JSON.stringify(payload, null, 2);
+  const live = S.labels.filter(l => !l.superseded_by).length;
+  $("#expStats").textContent = `${live} live · ${S.labels.length - live} superseded`;
+  $("#expDlg").showModal();
+  $("#expText").select();
+};
+$("#expClose").onclick = () => $("#expDlg").close();
+$("#expCopy").onclick = async () => {
+  $("#expText").select();
+  try { await navigator.clipboard.writeText($("#expText").value); $("#expCopy").textContent = "Copied"; }
+  catch { document.execCommand("copy"); $("#expCopy").textContent = "Copied"; }
+  setTimeout(() => { $("#expCopy").textContent = "Copy to clipboard"; }, 1600);
+};
+
+// ---------------------------------------------------------------- guide
+function showGuide(anchor) {
+  const g = $("#guide");
+  g.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  const t = anchor && g.querySelector(anchor);
+  // Scroll the overlay, not the page behind it.
+  g.scrollTop = 0;
+  if (t) t.scrollIntoView({ block: "start" });
+  $("#guideClose").focus();
+}
+function hideGuide() {
+  $("#guide").classList.add("hidden");
+  document.body.style.overflow = "";
+}
+$("#guideClose").onclick = hideGuide;
+$("#gateGuide").onclick = () => showGuide();
+$("#railGuide").onclick = () => showGuide();
+document.querySelectorAll(".guide-link").forEach(a => {
+  a.onclick = e => {
+    e.preventDefault();
+    // A link inside the draw dialog: close it, or the modal traps focus.
+    document.querySelectorAll("dialog[open]").forEach(d => d.close());
+    showGuide(a.getAttribute("href"));
+  };
+});
+$("#guide").addEventListener("click", e => {
+  const a = e.target.closest("a[href^='#g-']");
+  if (!a) return;
+  e.preventDefault();
+  const t = $("#guide").querySelector(a.getAttribute("href"));
+  if (t) t.scrollIntoView({ block: "start", behavior: "smooth" });
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !$("#guide").classList.contains("hidden")) {
+    hideGuide(); e.preventDefault();
+  }
+}, true);
+</script>
+</body>
+</html>
