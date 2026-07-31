@@ -706,16 +706,20 @@ AS12345, in-country, serving the ISP's standard notice page.</code></pre>
   heavily from measurements that look interesting, lightly but never zero from
   the ones that do not.</p>
   <table>
-    <tr><th>Stratum</th><th>Rate</th><th>Why it exists</th></tr>
-    <tr><td><code>screen_positive</code></td><td>1 in 10</td>
+    <tr><th>Stratum</th><th>Share of queue</th><th>Why it exists</th></tr>
+    <tr><td><code>screen_positive</code></td><td>40%</td>
         <td>Rows the pipeline finds blocked-leaning. Where most positives come from.</td></tr>
-    <tr><td><code>screen_negative</code></td><td>1 in 5,000</td>
+    <tr><td><code>screen_negative</code></td><td>35%</td>
         <td>Rows it does not. The only thing that bounds how much blocking the pipeline is <i>missing</i>.</td></tr>
-    <tr><td><code>fingerprint_match</code></td><td>all</td>
+    <tr><td><code>fingerprint_match</code></td><td>15%</td>
         <td>Exact blockpage matches. High-precision positives, tagged so they can be excluded from later checks.</td></tr>
-    <tr><td><code>incident_window</code></td><td>1 in 5</td>
+    <tr><td><code>incident_window</code></td><td>10%</td>
         <td>Inside a known event. Remember §01 — many of these are honestly <code>ok</code>.</td></tr>
   </table>
+  <p>The share is the fraction of <i>your queue</i>, not a sampling rate:
+  ask for 50 rows across the first two strata and you get 27 and 23. Shares
+  are normalised over whichever strata you pick, so dropping one hands its
+  place to the others rather than shrinking the queue.</p>
   <p>Rows from different strata are <b>interleaved</b> in your queue, and the
   stratum is never displayed. A queue that ran all the interesting rows first
   would tell you which stratum you were in, and that is most of the way to
@@ -723,10 +727,14 @@ AS12345, in-country, serving the ISP's standard notice page.</code></pre>
 
   <h3>What <code>sampling_weight</code> means</h3>
   <p>Each label carries a weight: how many production measurements that one row
-  stands for. Drawn at 1 in 10, the weight is 10. This is what converts a
-  deliberately lopsided corpus back into statements about the real world — without
-  it, the numbers reflect how the sample was drawn rather than what is happening
-  on the network.</p>
+  stands for. It is <b>measured, not declared</b> — the eligible population
+  divided by how many rows were actually drawn from it. Draw 27 rows out of
+  five million eligible and each one carries a weight of about 185,000.</p>
+  <p>That is what converts a deliberately lopsided corpus back into statements
+  about the real world. Without it, the numbers describe how the sample was
+  drawn rather than what is happening on the network. And because the weight
+  comes from the draw rather than from a setting, it cannot drift away from
+  what the query did: shrink the queue and every weight rises to match.</p>
 
   <h3>What <code>design_id</code> means</h3>
   <p>A <b>design</b> is the complete specification of a draw: which strata, at
@@ -769,12 +777,30 @@ AS12345, in-country, serving the ISP's standard notice page.</code></pre>
     are only comparable within a design.</p>
   </div>
 
+  <h3>Why the frame is not randomised for you</h3>
+  <p>It would be tempting to have each draw pick its own random date window, for
+  variety. It is the wrong lever, for two reasons.</p>
+  <p>It gives you <i>less</i> variety, not more: every row in the draw would come
+  from the same random week, where a wide frame gives you a queue where each row
+  is from a different point in time. And it would quietly corrupt the weights.
+  A row's chance of reaching you would become <i>(chance its window was picked)
+  × (its stratum rate)</i>, but only the second half is knowable to the sampler,
+  so every weight would be wrong by the number of windows that could have been
+  chosen — silently, and in the direction that understates how much production
+  data each label speaks for.</p>
+  <p>So: widen the frame for variety, raise the replicate for fresh rows. If you
+  do want each session focused on its own period, that is a real design and it is
+  expressible — but the window choice has to be part of the specification, with
+  its probability folded into the weight, not an accident of when you clicked
+  Draw.</p>
+
   <h3>Choosing tests</h3>
   <p>The test list shows real volume in your frame, biggest first, so you can see
   what is worth your time. <code>web_connectivity</code> is the bulk of OONI's
   data and the sensible place to start. The <code>screen+</code> figure tells you
-  whether a draw will actually return anything: 2,000 screen-positives at 1 in 10
-  gives you about 200 rows; 40 gives you four.</p>
+  whether a draw will actually return anything at all: a stratum with fewer
+  eligible rows than its share of the queue comes back short, and is flagged
+  <code>exhausted</code> in the recorded design.</p>
 
   <h2 id="g-export"><span class="n">08</span> What happens to your labels</h2>
   <p>They stay in this browser. Nothing is written back to OONI, there is no
@@ -848,17 +874,20 @@ AS12345, in-country, serving the ISP's standard notice page.</code></pre>
   </label>
   <label class="field"><span>Strata</span>
     <select id="dStrata" multiple size="4" style="font-family:var(--mono)">
-      <option value="screen_positive" selected>screen_positive — 1:10</option>
-      <option value="screen_negative" selected>screen_negative — 1:5000</option>
-      <option value="fingerprint_match">fingerprint_match — census</option>
-      <option value="incident_window">incident_window — 1:5 (needs cc + domain)</option>
+      <option value="screen_positive" selected>screen_positive — 40% of queue</option>
+      <option value="screen_negative" selected>screen_negative — 35% of queue</option>
+      <option value="fingerprint_match">fingerprint_match — 15% of queue</option>
+      <option value="incident_window">incident_window — 10% of queue (needs cc + domain)</option>
     </select>
   </label>
   <p class="hint" style="color:var(--dim)">Keep <b>screen_negative</b> in. It is
      the only stratum that bounds false negatives, and it is small enough to
      feel skippable. The design ID is derived from these settings, so changing
      any of them gives you a new one automatically — raise <b>replicate</b>
-     when you want fresh rows from the <i>same</i> settings.</p>
+     when you want fresh rows from the <i>same</i> settings, which is the way to
+     get a new queue without splitting your corpus across designs. The date
+     range is the <b>frame</b>: rows are spread across it, so a wide frame gives
+     a varied queue and a corpus that is not just about last month.</p>
   <div class="row spread" style="margin-top:14px">
     <span id="drawErr" class="stat" style="color:var(--diverge)"></span>
     <div class="row">
@@ -991,6 +1020,10 @@ function renderSession() {
 // ---------------------------------------------------------------- draw
 const dlg = $("#drawDlg");
 $("#drawBtn").onclick = () => {
+  // A wide frame by default. Every row in a draw then comes from a different
+  // point in time, which is both better labelling variety and a corpus that
+  // describes more than the last month. Narrow it deliberately when you are
+  // working a specific incident.
   const today = new Date(), back = new Date(Date.now() - 30 * 864e5);
   $("#dUntil").value = today.toISOString().slice(0, 10);
   $("#dSince").value = back.toISOString().slice(0, 10);
@@ -1911,6 +1944,8 @@ async function commit() {
 
     sampling_stratum: row.sampling_stratum,
     sampling_weight: row.sampling_weight,
+    sample_population: row.sample_population,
+    sample_rows: row.sample_rows,
     sampling_design_id: row.sampling_design_id,
     screen_kind: row.screen_kind,
 
