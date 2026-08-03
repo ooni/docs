@@ -649,6 +649,7 @@ control    104.16.133.229   AS13335    Cloudflare        US</code></pre>
     <tr><td><code>tls.reset.sni</code></td><td>RST after ClientHello, triggered by the server name</td></tr>
     <tr><td><code>tls.reset.other</code></td><td>RST during handshake, trigger unidentified</td></tr>
     <tr><td><code>tls.timeout</code></td><td>handshake stalls</td></tr>
+    <tr><td><code>tls.timeout.sni</code></td><td>handshake stalls after the ClientHello, triggered by the server name</td></tr>
     <tr><td><code>tls.mitm.self_signed</code></td><td>presented certificate is self-signed</td></tr>
     <tr><td><code>tls.mitm.ca_signed</code></td><td>validly signed, but for an unexpected name or issuer</td></tr>
     <tr><td><code>http.blockpage</code> · <code>http.redirect</code></td><td>block page served · redirect to one</td></tr>
@@ -1691,6 +1692,7 @@ const MECHANISMS = [
   { p: "tls.reset.sni",            d: "RST after ClientHello, triggered by the server name" },
   { p: "tls.reset.other",          d: "RST during handshake, trigger unidentified" },
   { p: "tls.timeout",              d: "handshake stalls" },
+  { p: "tls.timeout.sni",          d: "handshake stalls after the ClientHello, triggered by the server name" },
   { p: "tls.mitm" },
   { p: "tls.mitm.self_signed",     d: "presented certificate is self-signed" },
   { p: "tls.mitm.ca_signed",       d: "validly signed, but for an unexpected name or issuer" },
@@ -1795,7 +1797,10 @@ function pickMech(i) {
   $("#mechInput").focus();
 }
 $("#mechInput").addEventListener("input", () => { mechHl = 0; mechFilter($("#mechInput").value); });
-$("#mechInput").addEventListener("focus", () => mechFilter($("#mechInput").value));
+// Only reopen the dropdown on focus if there's already a query — landing on
+// this step (e.g. after picking a verdict) shouldn't dump the full taxonomy
+// open. Typing, or an explicit arrow-down, still opens it.
+$("#mechInput").addEventListener("focus", () => { if ($("#mechInput").value) mechFilter($("#mechInput").value); });
 $("#mechInput").addEventListener("blur", () => setTimeout(() => $("#mechList").classList.add("hidden"), 150));
 $("#mechInput").addEventListener("keydown", e => {
   const input = $("#mechInput");
