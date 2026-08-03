@@ -1021,13 +1021,9 @@ function renderSession() {
 // ---------------------------------------------------------------- draw
 const dlg = $("#drawDlg");
 $("#drawBtn").onclick = () => {
-  // A wide frame by default. Every row in a draw then comes from a different
-  // point in time, which is both better labelling variety and a corpus that
-  // describes more than the last month. Narrow it deliberately when you are
-  // working a specific incident.
-  const today = new Date(), back = new Date(Date.now() - 30 * 864e5);
-  $("#dUntil").value = today.toISOString().slice(0, 10);
-  $("#dSince").value = back.toISOString().slice(0, 10);
+  // We set a specific reference time
+  $("#dUntil").value = '2026-07-04';
+  $("#dSince").value = '2026-08-03';
   $("#drawErr").textContent = "";
   dlg.showModal();
   loadTestNames();
@@ -1110,6 +1106,40 @@ $("#drawGo").onclick = async () => {
   } finally { $("#drawGo").disabled = false; }
 };
 
+// ---------------------------------------------------------------- row data cache
+// Fetching the candidate + context is the slow part of loadRow. As soon as a
+// row is on screen we fetch whatever "Next unlabelled" would jump to next, so
+// by the time you commit and press it the data is usually already in hand.
+const rowCache = new Map();   // measurement_uid -> Promise<{cand, ctx}>
+const ROW_CACHE_MAX = 40;
+
+function fetchRowData(row) {
+  if (rowCache.has(row.measurement_uid)) return rowCache.get(row.measurement_uid);
+  const p = (async () => {
+    const cand = await (await fetch(api("/candidate/" + encodeURIComponent(row.measurement_uid)))).json();
+    if (cand.detail) throw new Error(cand.detail);
+    let ctx = null;
+    const host = (cand.observations[0] || {}).hostname;
+    if (host) {
+      const q = new URLSearchParams({
+        hostname: host, probe_cc: row.probe_cc, probe_asn: row.probe_asn,
+        at: row.measurement_start_time, hours: 6,
+      });
+      try { ctx = await (await fetch(api("/context?" + q))).json(); } catch {}
+    }
+    return { cand, ctx };
+  })();
+  rowCache.set(row.measurement_uid, p);
+  p.catch(() => rowCache.delete(row.measurement_uid));   // don't cache a failed fetch
+  if (rowCache.size > ROW_CACHE_MAX) rowCache.delete(rowCache.keys().next().value);
+  return p;
+}
+
+function prefetchNext() {
+  const j = nextUnlabelledIndex(cursor + 1);
+  if (j !== -1) fetchRowData(S.queue[j]).catch(() => {});   // best-effort
+}
+
 // ---------------------------------------------------------------- load a row
 async function loadRow(i) {
   if (i < 0 || i >= S.queue.length) return;
@@ -1130,22 +1160,13 @@ async function loadRow(i) {
   body.append(el("div", "banner", "Loading measurement…"));
 
   try {
-    const cand = await (await fetch(api("/candidate/" + encodeURIComponent(row.measurement_uid)))).json();
-    if (cand.detail) throw new Error(cand.detail);
-    let ctx = null;
-    const host = (cand.observations[0] || {}).hostname;
-    if (host) {
-      const q = new URLSearchParams({
-        hostname: host, probe_cc: row.probe_cc, probe_asn: row.probe_asn,
-        at: row.measurement_start_time, hours: 6,
-      });
-      try { ctx = await (await fetch(api("/context?" + q))).json(); } catch {}
-    }
+    const { cand, ctx } = await fetchRowData(row);
     current = { row, candidate: cand, context: ctx };
     renderCandidate();
     // Existing label? Re-open it rather than silently double-labelling.
     const prev = S.labels.find(l => l.measurement_uid === row.measurement_uid && !l.superseded_by);
     if (prev) restore(prev);
+    prefetchNext();
   } catch (e) {
     body.innerHTML = "";
     body.append(el("div", "banner err", "Could not load: " + (e.message || e)));
@@ -2022,15 +2043,23 @@ async function showReveal(rec) {
   }
 }
 
-function nextUnlabelled() {
-  const start = cursor + 1;
+function nextUnlabelledIndex(from) {
   for (let i = 0; i < S.queue.length; i++) {
-    const j = (start + i) % S.queue.length;
-    if (!labelled(S.queue[j].measurement_uid)) return loadRow(j);
+    const j = (from + i) % S.queue.length;
+    if (!labelled(S.queue[j].measurement_uid)) return j;
   }
-  $("#mainBody").innerHTML = "";
-  $("#mainBody").append(el("div", "banner",
-    "Queue finished. Export your labels, then draw another queue."));
+  return -1;
+}
+
+function nextUnlabelled() {
+  const j = nextUnlabelledIndex(cursor + 1);
+  if (j === -1) {
+    $("#mainBody").innerHTML = "";
+    $("#mainBody").append(el("div", "banner",
+      "Queue finished. Export your labels, then draw another queue."));
+    return;
+  }
+  loadRow(j);
 }
 
 // ---------------------------------------------------------------- export
