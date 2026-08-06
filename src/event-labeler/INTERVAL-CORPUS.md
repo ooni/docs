@@ -1,10 +1,17 @@
 # Quiet-interval labels: the missing negative grain
 
-Working note, not yet built. Captures the design discussion for a third label
-grain that would let the event-replay harness report a *false-alarm rate*
-rather than only a recall number. Companion to
-`docs/data/pipeline-label-corpus` §1.2 (event labels) and §1.1 (measurement
-labels).
+The third label grain: what lets the event-replay harness report a *false-alarm
+rate* rather than only a recall number. Companion to
+`docs/data/pipeline-label-corpus` §1.3 (the schema as built), §1.2 (event
+labels) and §1.1 (measurement labels).
+
+**Built.** The sampler is `GET /api/v1/labeling/interval_sample` and the
+post-commit reveal is `GET /api/v1/labeling/interval_reveal`, both in
+`oonimeasurements/routers/labeling.py`. The UI is `src/interval-labeler/`,
+served at `/tools/interval-labeler`. The estimator is
+`oonipipeline/analysis/interval_eval.py`, wired into `oonipipeline event-eval
+--intervals`. This document remains the reasoning; the two places it was
+changed in the building are marked below.
 
 ## The problem
 
@@ -23,7 +30,7 @@ This inverts the rule that events carry no sampling columns. Events are
 curated, so there is no frame and no weight. Quiet intervals are the opposite:
 `sampling_design_id`, `sampling_stratum` and `sampling_weight` are
 load-bearing, because the false-alarm rate is an *estimate over a population of
-cell-weeks*. The measurement grain's sampling machinery (§1.3, §1.4) applies
+cell-weeks*. The measurement grain's sampling machinery (§1.4, §1.5) applies
 here almost unchanged — it is the event grain that is the exception, not this.
 
 ## Unit
@@ -59,13 +66,21 @@ a weighted (Horvitz–Thompson) estimate per volume band, and the alerted stratu
 stops being circular because its weight states how much of the frame it stands
 for.
 
+**Changed in the building: the strata partition the frame.** As written above
+the two overlap — an alerted cell-week is also in `random_covered`'s
+population, so it has two selection probabilities and no single correct weight.
+The sampler resolves `random_covered` as the complement of whatever else is
+being drawn, so the frame is covered exactly once for any subset of strata, and
+the resolved predicate goes into the design spec: a weight can never be
+reinterpreted under a partition it was not drawn under.
+
 ## Biases, and the guard for each
 
 | Bias | Effect | Guard |
 |---|---|---|
 | Verification / absence of evidence | "Quiet" is judged from the same OONI data the detector reads, so an unmeasured block reads as quiet — and a *better* candidate that finds subtle real events is charged a false alarm | Name the verdict `quiet_observed`, never `quiet`. It caps the claim at "no interference visible in OONI's data", which is the honest ceiling |
 | Frame definition | Uniform draws over all cell-weeks are dominated by cells with too little data for any detector to fire; include them and every detector scores well | Frame = cell-weeks above a volume floor; stratify by volume band and report per band, as `size_band` does for events |
-| Anchoring | Worse than in the measurement queue: the alerted stratum *is* the detector's output, so seeing "CUSUM fired" invites rationalising | Blind alert state, changepoints and LoNI until commit; record `blinded` per row (§3.3) |
+| Anchoring | Worse than in the measurement queue: the alerted stratum *is* the detector's output, so seeing "CUSUM fired" invites rationalising | Blind alert state, changepoints and LoNI until commit; record `blinded` per row (§3.4) |
 | Contamination | An unreported real event inside a week called quiet | Biases the rate *upward*, the safe direction. Cross-check draws against the incident list and the adjudicated event corpus; mark overlaps `event_present` rather than dropping them, since dropping silently shrinks the denominator |
 | Differential effort | Ambiguous cells get skipped, surviving negatives are the easy ones | Keep `uncertain` first-class and count it, as `unusable` and `scoreable` are counted |
 | Non-independence | Cell-weeks autocorrelate in time and correlate across ASNs in a country | Cluster-bootstrap by `(cc, week)`; do not treat cell-weeks as iid |
@@ -82,8 +97,9 @@ for.
   "confidence": "probable",
   "rationale": "…",
 
-  "sampling_stratum": "detector_alerted",  // | random_covered
+  "sampling_stratum": "detector_alerted",  // | random_covered | near_miss
   "screen_kind": "incumbent_alert",        // | volume_stratified_random
+                                           // | near_miss_score
   "sampling_weight": 41022.5,
   "sampling_design_id": "…",
 
@@ -106,16 +122,34 @@ minute of analyst time. Importance-sample toward near-misses (cells with
 partial or high-variance signal that did not alert) and let the weights correct
 for it. That is the whole reason to record a design rather than draw uniformly.
 
+**Changed in the building: the near-miss draw is a third stratum**,
+`near_miss`, defined as "did not alert, and something in the week scored
+blocked-leaning". Making it a stratum rather than a tilt inside `random_covered`
+keeps every row's selection probability a single recorded number; it is
+optional, and when it is not selected those cells stay in `random_covered`,
+which is what makes the partition hold either way.
+
 ## UI
 
 Closer to the measurement labeler than to the event editor: a drawn queue, one
 cell-week at a time, the observation-outcome timeline from `Timeline.tsx`,
-blinded until commit, `Q` / `E` / `U` plus a rationale. Would live in
-`src/interval-labeler/` and reuse the timeline and sampler plumbing.
+blinded until commit, `Q` / `E` / `U` plus a rationale. Lives in
+`src/interval-labeler/`, reusing that timeline (extended with markers for the
+revealed changepoints), the labeller shell CSS and the sampler plumbing.
 
-## Blocker
+Two things the note did not anticipate and the UI needed. The chart pads the
+week on both sides, because a week inside a long-running block has no change in
+it and reads as quiet from its own shape alone. And the queue takes an imported
+event corpus, flagging cell-weeks a known event overlaps: that is the
+contamination cross-check, and it is external ground truth rather than detector
+output, so showing it before commit is not unblinding.
 
-Needs a sampler endpoint — `/api/v1/labeling/sample` extended to cell-weeks, or
-a sibling `interval_sample` — that records the predicate and population before
-drawing, as W2 does for measurements. Drawing from the frame is the one thing
-the browser cannot do honestly on its own.
+## Sampler
+
+`GET /api/v1/labeling/interval_sample`, the sibling endpoint this note asked
+for, recording the predicate and population before drawing as W2 does for
+measurements. Two additions the frame turned out to need: it snaps to whole ISO
+weeks, since a partial week is a shorter observation window rather than a
+smaller one, and it defaults to the domains the detector actually runs on,
+since counting quiet time in cells nothing watches flatters every detector for
+free. Both are in the spec, so both are in the design id.

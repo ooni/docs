@@ -16,6 +16,18 @@ export interface ZoomRange {
   hi: number;
 }
 
+/**
+ * A moment worth drawing a line at, over the data rather than under it. The
+ * interval labeller uses these for revealed changepoints; nothing in the event
+ * editor sets them, and nothing may set them from pipeline output *before* a
+ * commit — see the blinding rule.
+ */
+export interface Marker {
+  t: number;
+  color: string;
+  label: string;
+}
+
 export interface TimelineProps {
   /** One panel per facet: a single "all" panel, or one per target / ASN. */
   facets: FacetSeries[];
@@ -30,6 +42,7 @@ export interface TimelineProps {
   onArm: (key: BoundKey | null) => void;
   zoom: ZoomRange | null;
   onZoom: (z: ZoomRange | null) => void;
+  markers?: Marker[];
 }
 
 const W = 1000;
@@ -85,6 +98,7 @@ export default function Timeline({
   onArm,
   zoom,
   onZoom,
+  markers,
 }: TimelineProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -326,6 +340,28 @@ export default function Timeline({
 
             {bracketEdges(bounds.onset_earliest, bounds.onset_latest, "#ffb84d", "onset-edge")}
             {bracketEdges(bounds.resolution_earliest, bounds.resolution_latest, "#9d84f7", "res-edge")}
+
+            {(markers || [])
+              .filter((m) => m.t >= t0 && m.t <= t1)
+              .map((m, i) => (
+                <g key={"mk" + i}>
+                  <line
+                    x1={X(m.t)}
+                    x2={X(m.t)}
+                    y1={plotTop}
+                    y2={plotBottom}
+                    stroke={m.color}
+                    strokeWidth={1.2}
+                    strokeDasharray="3 3"
+                  />
+                  {/* `fill` as style, not attribute: the stylesheet's
+                      `text.axis` rule would win over a presentation
+                      attribute and paint every marker grey. */}
+                  <text x={X(m.t) + 3} y={plotTop + 9} className="axis" style={{ fill: m.color }}>
+                    {m.label}
+                  </text>
+                </g>
+              ))}
 
             {drag && Math.abs(drag.to - drag.from) >= DRAG_MIN && (
               <rect

@@ -1,0 +1,41 @@
+/*
+ * Quiet-interval labeller. Layered on ../labeler/labeler.css (shell, rails,
+ * choices, dialogs, reveal) and ../event-labeler/event-labeler.css (the chart,
+ * its tooltip and legend), so what lives here is only what neither of them
+ * has. Mount with `class="ooni-labeler event-labeler interval-labeler"` and
+ * import all three once, globally, wherever <IntervalLabeler /> is rendered.
+ */
+
+.ooni-labeler.interval-labeler #app { grid-template-columns: 250px 1fr 340px; }
+@media (max-width: 1100px) {
+  .ooni-labeler.interval-labeler #app { grid-template-columns: 1fr; }
+}
+.interval-labeler main { max-width: 1040px; }
+
+/* Verdict colours. Quiet is the common answer and reads as the calm one;
+   event borrows the diverge colour the measurement queue uses for blocked, so
+   the two grains do not disagree about what red means. */
+.interval-labeler .c-quiet    { --sel: var(--agree); }
+.interval-labeler .c-event    { --sel: var(--diverge); }
+.interval-labeler .c-un       { --sel: var(--sealed); }
+.interval-labeler .c-unusable { --sel: var(--faint); }
+
+.interval-labeler .subject { margin-bottom: 12px; }
+.interval-labeler .subject h2 {
+  font-size: 15px; margin: 0 0 3px; font-weight: 600; font-family: var(--mono);
+}
+.interval-labeler .dim { color: var(--dim); font-weight: 400; }
+
+/* The queue row carries a date column and, when an event corpus is loaded, a
+   `!` in the tick slot. */
+.interval-labeler .qrow { gap: 6px; }
+.interval-labeler .qrow .stat { margin-left: auto; flex: none; }
+.interval-labeler .qrow .tick { color: var(--dim); }
+
+.interval-labeler .banner.warn {
+  border-color: var(--probe); color: var(--text);
+}
+.interval-labeler .banner.warn ul { margin: 6px 0 0; padding-left: 18px; }
+.interval-labeler .banner.warn li { font-size: 12px; }
+
+.interval-labeler .reveal-box dd { white-space: pre-wrap; }
