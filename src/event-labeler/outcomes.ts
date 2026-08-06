@@ -17,13 +17,12 @@ export const OK = "none";
 export const OTHER = "other";
 
 const FAMILIES: Record<string, string[]> = {
-  dns: ["#ffb84d", "#e09a2b", "#b87a17"],
-  tcp: ["#9d84f7", "#7a63d6", "#5b47a8"],
-  tls: ["#ff7359", "#d9543c", "#a83a26"],
-  http: ["#6ec7de", "#4a9fb5", "#33788c"],
-  ip: ["#e885bd", "#c26597", "#9c4a76"],
+  dns:  ["#eebefa", "#cc5de8", "#862e9c"], // fuschia 2 / 5 / 9
+  tcp: ["#fcc2d7", "#e64980", "#a61e4d"], // pink 2 / 6 / 9
+  tls:  ["#ffd8a8", "#ffa94d", "#e8590c"], // orange 2 / 4 / 8
+  http: ["#c5f6fa", "#22b8cf", "#0c8599"], // cyan 1 / 5 / 8
 };
-const FALLBACK = ["#8b99a9", "#6b7684", "#525c68"];
+const FALLBACK = ["#ced4da", "#868e96", "#343a40"]; // gray 4 / 6 / 8
 
 /**
  * The layer a failure belongs to. Observation failure strings carry variants
