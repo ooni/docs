@@ -66,9 +66,9 @@ export function ExportDialog({
       <span className="eyebrow">Export</span>
       <h3 style={{ margin: "4px 0 6px" }}>Your intervals</h3>
       <p className="hint" style={{ color: "var(--dim)" }}>
-        Feed this to <code>oonipipeline event-eval --intervals</code>. Weights and design come
-        with it, because a rate computed by counting these rows would describe the queue rather
-        than the network.
+        Feed this to <code>docs/detector-evaluation.ipynb</code> in the pipeline repo. Weights
+        and design come with it, because a rate computed by counting these rows would describe the
+        queue rather than the network.
       </p>
       <textarea id="expText" rows={16} readOnly ref={textRef} value={text} />
       <div className="row spread" style={{ marginTop: 12 }}>

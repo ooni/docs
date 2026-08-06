@@ -359,10 +359,11 @@ size_band = asn_scope_kind = 'all'      -> national
         </p>
         <p>
           Nothing is stored server-side. Events live in this browser and leave by copy-paste; export
-          early and often. <code>oonipipeline event-eval &lt;events.json&gt;</code> reads exactly the
-          exported file, replays the detector per event and prints event recall stratified by{" "}
-          <code>size_band</code>, median detection latency, false alerts per quiet series-week and
-          alerts per detected true event.
+          early and often. <code>docs/detector-evaluation.ipynb</code> in the pipeline repo reads
+          exactly the exported file, replays the detector per event and reports event recall
+          stratified by <code>size_band</code>, median detection latency and alerts per detected
+          true event. The false-alarm side of the scorecard comes from the quiet-interval corpus
+          instead: events are curated, so there is no quiet time counted in them.
         </p>
         <div className="callout">
           <span className="eyebrow">Volume</span>

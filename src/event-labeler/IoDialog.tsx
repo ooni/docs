@@ -71,7 +71,7 @@ export default function IoDialog({ open, mode, state, onClose, onImported }: IoD
       <p className="hint" style={{ color: "var(--dim)" }}>
         {mode === "export"
           ? "Select all and copy. This is the whole event-grain contribution for this browser; " +
-            "oonipipeline event-eval reads exactly this file."
+            "docs/detector-evaluation.ipynb reads exactly this file."
           : "Drafts come from scripts/incidents_to_events.py. Import merges by event_id and leaves " +
             "rows you have already adjudicated alone, so a refreshed draft costs you nothing."}
       </p>

@@ -8,15 +8,15 @@ labels) and §1.1 (measurement labels).
 **Built.** The sampler is `GET /api/v1/labeling/interval_sample` and the
 post-commit reveal is `GET /api/v1/labeling/interval_reveal`, both in
 `oonimeasurements/routers/labeling.py`. The UI is `src/interval-labeler/`,
-served at `/tools/interval-labeler`. The estimator is
-`oonipipeline/analysis/interval_eval.py`, wired into `oonipipeline event-eval
---intervals`. This document remains the reasoning; the two places it was
-changed in the building are marked below.
+served at `/tools/interval-labeler`. The estimator is §5 of
+`docs/detector-evaluation.ipynb` in the pipeline repo, alongside the event
+replay it supplies the denominator for. This document remains the reasoning;
+the two places it was changed in the building are marked below.
 
 ## The problem
 
-`oonipipeline event-eval` prints "false alerts per quiet series-week", but
-nothing in the corpus defines a quiet series-week. `false_positive_event`
+The event replay prints "false alerts per quiet series-week", but nothing in
+the event corpus defines a quiet series-week. `false_positive_event`
 (§1.2) does not fill the gap: it covers an *alleged* event that adjudication
 rejected, so it is curated, sourced from someone claiming something happened,
 and unweighted. It is a must-not-fire regression test, not a denominator.
