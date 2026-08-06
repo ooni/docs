@@ -113,9 +113,20 @@ export async function fetchSeries(
     facet: FacetMode;
     /** Explicit window, in ms — what "load the zoomed range" passes. */
     window?: { lo: number; hi: number } | null;
+    /** Narrow to one target / one ASN. Null means the whole scope. */
+    filterTarget?: string | null;
+    filterAsn?: number | null;
   }
 ): Promise<SeriesResult> {
   const { targets, asns, scoped } = scopeOf(e);
+
+  // Splitting on one axis still sums the other, so each axis also has a
+  // filter: "per ASN, for this one target" is a question the scope fields
+  // cannot answer otherwise. Filters narrow the query rather than the drawing,
+  // so a filtered view is also a cheaper one.
+  const useTargets = opts.filterTarget ? [opts.filterTarget as string | null] : targets;
+  const useAsns = opts.filterAsn != null ? new Set([opts.filterAsn]) : asns;
+  const useScoped = opts.filterAsn != null || scoped;
 
   const anchorLo = Date.parse((e.onset_earliest || "") + "Z") || Date.now();
   const anchorHi =
@@ -137,8 +148,8 @@ export async function fetchSeries(
   if (opts.facet === "target") q.append("group_by", "hostname");
   if (opts.facet === "asn") q.append("group_by", "probe_asn");
   if (e.probe_cc) q.append("probe_cc", e.probe_cc);
-  for (const t of targets) if (t) q.append("hostname", t);
-  if (scoped) for (const a of asns) q.append("probe_asn", String(a));
+  for (const t of useTargets) if (t) q.append("hostname", t);
+  if (useScoped) for (const a of useAsns) q.append("probe_asn", String(a));
   for (const t of e.test_names || []) q.append("test_name", t);
 
   const base = apiBase.replace(/\/$/, "");
@@ -194,17 +205,25 @@ export async function fetchSeries(
   const hiddenFacets = Math.max(facets.length - MAX_FACETS, 0);
   if (hiddenFacets) facets = facets.slice(0, MAX_FACETS);
 
+  const targetNote = opts.filterTarget
+    ? opts.filterTarget
+    : e.target_set_kind === "enumerated" && e.target_set.length
+      ? `${e.target_set.length} target${e.target_set.length > 1 ? "s" : ""}`
+      : "any target";
+  const asnNote =
+    opts.filterAsn != null
+      ? "AS" + opts.filterAsn
+      : scoped
+        ? `${asns.size} ASN${asns.size > 1 ? "s" : ""}`
+        : "country-wide";
+
   const note = facets.length
     ? [
         `${timestamps.size} ${opts.grain} buckets · ${total.toLocaleString()} observations`,
+        `${targetNote}, ${asnNote}`,
         opts.facet === "none"
-          ? [
-              e.target_set_kind === "enumerated" && e.target_set.length
-                ? `${e.target_set.length} target${e.target_set.length > 1 ? "s" : ""}`
-                : "any target",
-              scoped ? `${asns.size} ASN${asns.size > 1 ? "s" : ""}` : "country-wide",
-            ].join(", ") + ", summed"
-          : `${facets.length}${hiddenFacets ? ` of ${facets.length + hiddenFacets}` : ""} ` +
+          ? "summed"
+          : `split into ${facets.length}${hiddenFacets ? ` of ${facets.length + hiddenFacets}` : ""} ` +
             `${opts.facet === "asn" ? "ASNs" : "targets"}, by volume`,
         (e.test_names || []).length ? (e.test_names || []).join("/") : "",
       ]

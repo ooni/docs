@@ -19,11 +19,15 @@ export interface EventPaneProps {
   padDays: number;
   mode: TimelineMode;
   facet: FacetMode;
+  filterTarget: string | null;
+  filterAsn: number | null;
   zoom: ZoomRange | null;
   onGrain: (g: "hour" | "day") => void;
   onPad: (d: number) => void;
   onMode: (m: TimelineMode) => void;
   onFacet: (f: FacetMode) => void;
+  onFilterTarget: (t: string | null) => void;
+  onFilterAsn: (a: number | null) => void;
   onZoom: (z: ZoomRange | null) => void;
   onLoadSeries: () => void;
 
@@ -43,6 +47,15 @@ const BOUNDS: { key: BoundKey; label: string; picker: string }[] = [
 export default function EventPane(props: EventPaneProps) {
   const { event, draft, resolved, set, armed, onArm } = props;
   const colors = useMemo(() => assignOutcomeColors(props.outcomes), [props.outcomes]);
+
+  // Only offer a filter for an axis the scope actually enumerates: filtering
+  // "any target" or a country-wide ASN scope has nothing to pick from.
+  const targetChoices = resolved.target_set_kind === "enumerated" ? resolved.target_set : [];
+  const asnChoices = resolved.asn_scope_kind === "listed" ? resolved.asn_scope : [];
+  // A scope edit can strip the value a filter refers to; fall back to "all"
+  // rather than querying a target the event no longer names.
+  const targetValue = props.filterTarget && targetChoices.includes(props.filterTarget) ? props.filterTarget : "";
+  const asnValue = props.filterAsn != null && asnChoices.includes(props.filterAsn) ? String(props.filterAsn) : "";
 
   const band = sizeBand(resolved);
   const inverted =
@@ -189,6 +202,36 @@ export default function EventPane(props: EventPaneProps) {
             <option value="target">by target</option>
             <option value="asn">by ASN</option>
           </select>
+          {targetChoices.length > 1 && (
+            <select
+              style={{ width: "auto" }}
+              value={targetValue}
+              onChange={(e) => props.onFilterTarget(e.target.value || null)}
+              title="restrict the query to one target"
+            >
+              <option value="">all targets</option>
+              {targetChoices.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          )}
+          {asnChoices.length > 1 && (
+            <select
+              style={{ width: "auto" }}
+              value={asnValue}
+              onChange={(e) => props.onFilterAsn(e.target.value ? Number(e.target.value) : null)}
+              title="restrict the query to one ASN"
+            >
+              <option value="">all ASNs</option>
+              {asnChoices.map((a) => (
+                <option key={a} value={String(a)}>
+                  AS{a}
+                </option>
+              ))}
+            </select>
+          )}
           <select
             style={{ width: "auto" }}
             value={props.grain}
@@ -202,6 +245,7 @@ export default function EventPane(props: EventPaneProps) {
             value={String(props.padDays)}
             onChange={(e) => props.onPad(Number(e.target.value))}
           >
+            <option value="3">±3d</option>
             <option value="7">±7d</option>
             <option value="14">±14d</option>
             <option value="30">±30d</option>
@@ -226,8 +270,17 @@ export default function EventPane(props: EventPaneProps) {
               share
             </button>
           </div>
-          <button type="button" className="btn" onClick={props.onLoadSeries}>
-            Load series
+          <button
+            type="button"
+            className={"btn" + (props.zoom ? " btn-primary" : "")}
+            onClick={() => props.onLoadSeries()}
+            title={
+              props.zoom
+                ? "re-query just the zoomed span, so a finer grain fits in the window"
+                : "query the onset bracket ± the padding"
+            }
+          >
+            {props.zoom ? "Load zoomed range" : "Load series"}
           </button>
         </div>
 

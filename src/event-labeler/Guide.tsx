@@ -200,6 +200,26 @@ export default function Guide({ open, anchor, onClose }: GuideProps) {
           can defend beats an hour you cannot.
         </p>
         <p>
+          <b>Split it.</b> A summed chart hides the thing that decides scope. Switch to{" "}
+          <b>by ASN</b> or <b>by target</b> and each gets its own panel, sorted by volume, sharing
+          one time axis: two ASNs behaving differently, or one domain moving a day before the rest,
+          is invisible in the sum and obvious in the split. That is the evidence for{" "}
+          <code>asn_scope</code> and <code>target_set</code>, which you have to fill in anyway.
+        </p>
+        <p>
+          Splitting on one axis still sums the other, so each axis also has a filter: pick one
+          target, or one ASN, or leave both on <em>all</em>. "Per ASN, for this one domain" is a
+          question the scope fields cannot answer otherwise — and since the filter narrows the query
+          rather than the drawing, the filtered view is also the faster one.
+        </p>
+        <p>
+          <b>Drag to zoom</b> into a span; the bars get wide enough to hit the bucket you mean. With
+          a zoom active the load button becomes <b>Load zoomed range</b>, which re-queries just that
+          span — the way to get hourly resolution over a window the API would time out on at full
+          width. Each bound also has a <b>✕</b> to clear it; clearing{" "}
+          <code>resolution_earliest</code> is how an event goes back to ongoing.
+        </p>
+        <p>
           <b>count</b> shows observations per bucket; <b>share</b> normalises each bucket to 100% so
           an onset stays legible when probe volume swings, with a volume rail underneath. Check the
           rail before calling an onset from the share view: a volume collapse — a shutdown quieting

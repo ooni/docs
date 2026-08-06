@@ -62,7 +62,10 @@ export default function EventLabeler() {
   const [padDays, setPadDays] = useState(14);
   const [mode, setMode] = useState<TimelineMode>("count");
   const [facet, setFacet] = useState<FacetMode>("none");
+  const [filterTarget, setFilterTarget] = useState<string | null>(null);
+  const [filterAsn, setFilterAsn] = useState<number | null>(null);
   const [zoom, setZoom] = useState<ZoomRange | null>(null);
+  const seriesSeq = useRef(0);
 
   const [coverageLines, setCoverageLines] = useState<string[] | null>(null);
   const [coverageLoading, setCoverageLoading] = useState(false);
@@ -93,12 +96,15 @@ export default function EventLabeler() {
     setSaveMsg(null);
     setCoverageLines(null);
     setArmed(null);
-    // The series belongs to the previous event's scope; drop it rather than
-    // leaving a chart that silently describes something else.
+    // The series belongs to the previous event's scope; drop it, and the
+    // filters with it, rather than leaving a chart that silently describes
+    // something else or a filter naming a target this event never had.
     setFacets([]);
     setOutcomes([]);
     setSeriesNote("");
     setZoom(null);
+    setFilterTarget(null);
+    setFilterAsn(null);
   }
 
   const set = (patch: Partial<EventDraft>) => {
@@ -148,35 +154,73 @@ export default function EventLabeler() {
     setSaveMsg({ kind: "ok", text: "every event is complete" });
   }
 
-  async function loadSeries(facetOverride?: FacetMode) {
+  interface SeriesOverrides {
+    facet?: FacetMode;
+    filterTarget?: string | null;
+    filterAsn?: number | null;
+  }
+
+  async function loadSeries(overrides?: SeriesOverrides) {
     if (!resolved) return;
+    // Last request wins, not last response: switching facet while a slow query
+    // is in flight would otherwise leave the older answer on screen, labelled
+    // with the newer control settings.
+    const seq = ++seriesSeq.current;
+    const stale = () => seq !== seriesSeq.current;
     setSeriesLoading(true);
     setSeriesNote("");
-    // A new query means a new domain; a stale zoom would silently crop it.
+    // Zoomed? Re-query exactly the visible span. The fetched data then *is*
+    // the window, so the zoom has been spent and is cleared either way — a
+    // stale zoom over a new domain would silently crop it.
+    const window = zoom;
     setZoom(null);
     try {
       const r = await fetchSeries(stateRef.current.apiBase, resolved, {
         grain,
         padDays,
-        facet: facetOverride ?? facet,
+        facet: overrides?.facet ?? facet,
+        // `in` rather than `??`: null is a real value here ("all"), so it must
+        // not fall through to the state it is trying to clear.
+        filterTarget: overrides && "filterTarget" in overrides ? (overrides.filterTarget ?? null) : filterTarget,
+        filterAsn: overrides && "filterAsn" in overrides ? (overrides.filterAsn ?? null) : filterAsn,
+        window,
       });
+      if (stale()) return;
       setFacets(r.facets);
       setOutcomes(r.outcomes);
       setSeriesNote(r.note);
     } catch (err: any) {
+      if (stale()) return;
       setFacets([]);
       setOutcomes([]);
-      setSeriesNote("series failed: " + String(err?.message || err));
+      // The aggregation API times out rather than paginating, and a wide
+      // hourly window over several ASNs is exactly what trips it. Say what to
+      // do about it instead of just reporting the failure.
+      setSeriesNote(
+        "series failed: " +
+          String(err?.message || err) +
+          (grain === "hour" && !window
+            ? " — wide hourly windows time out server-side. Try daily grain or a smaller ± window, then drag to zoom and reload for hourly detail."
+            : "")
+      );
     } finally {
-      setSeriesLoading(false);
+      if (!stale()) setSeriesLoading(false);
     }
   }
 
-  // Faceting is a different group_by, so it needs a refetch — but only if
-  // there is already a chart on screen to re-draw.
+  // Faceting and filtering both change the query, so they need a refetch — but
+  // only if there is already a chart on screen to re-draw.
   const changeFacet = (f: FacetMode) => {
     setFacet(f);
-    if (facets.length) loadSeries(f);
+    if (facets.length) loadSeries({ facet: f });
+  };
+  const changeFilterTarget = (t: string | null) => {
+    setFilterTarget(t);
+    if (facets.length) loadSeries({ filterTarget: t });
+  };
+  const changeFilterAsn = (a: number | null) => {
+    setFilterAsn(a);
+    if (facets.length) loadSeries({ filterAsn: a });
   };
 
   async function runCoverage() {
@@ -202,6 +246,8 @@ export default function EventLabeler() {
     setOutcomes([]);
     setSeriesNote("");
     setZoom(null);
+    setFilterTarget(null);
+    setFilterAsn(null);
     setCoverageLines(null);
   };
 
@@ -341,6 +387,10 @@ export default function EventLabeler() {
                 onMode={setMode}
                 facet={facet}
                 onFacet={changeFacet}
+                filterTarget={filterTarget}
+                filterAsn={filterAsn}
+                onFilterTarget={changeFilterTarget}
+                onFilterAsn={changeFilterAsn}
                 zoom={zoom}
                 onZoom={setZoom}
                 onLoadSeries={loadSeries}
