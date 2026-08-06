@@ -1,0 +1,130 @@
+/*
+ * Event-grain editor. Layered on top of ../labeler/labeler.css — the colours,
+ * shell, chips, type-ahead, dialog and rail styles all come from there, and
+ * only what the event form adds lives here. Mount with
+ * `class="ooni-labeler event-labeler"` so both stylesheets apply, and import
+ * both once, globally, wherever you render <EventLabeler />.
+ */
+
+.ooni-labeler.event-labeler #app { grid-template-columns: 240px 1fr 330px; }
+@media (max-width: 1100px) { .ooni-labeler.event-labeler #app { grid-template-columns: 1fr; } }
+.event-labeler main { max-width: 980px; }
+
+/* ---------- form furniture ---------- */
+.event-labeler fieldset {
+  border: 1px solid var(--line); border-radius: 5px;
+  padding: 10px 14px 14px; margin: 0 0 16px; background: var(--panel);
+}
+.event-labeler legend {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--faint); padding: 0 6px;
+}
+.event-labeler .field { margin-bottom: 10px; }
+.event-labeler .field > span { color: var(--dim); font-size: 11px; }
+.event-labeler .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.event-labeler .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 12px; }
+@media (max-width: 640px) {
+  .event-labeler .row2, .event-labeler .row3 { grid-template-columns: 1fr; }
+}
+.event-labeler input[type=datetime-local] {
+  width: 100%; background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 4px; padding: 6px 9px; font-family: var(--mono); font-size: 12px;
+  color-scheme: dark;
+}
+.event-labeler input:disabled, .event-labeler select:disabled { opacity: .4; cursor: not-allowed; }
+.event-labeler .muted { color: var(--faint); font-size: 11px; }
+.event-labeler .derived { font-family: var(--mono); font-size: 11px; color: var(--agree); margin-top: 4px; }
+.event-labeler .derived.warn { color: var(--diverge); }
+.event-labeler .subject a, .event-labeler .banner a { color: var(--probe); }
+.event-labeler code {
+  font-family: var(--mono); font-size: .9em; background: var(--panel-2);
+  border: 1px solid var(--line); border-radius: 3px; padding: 0 4px;
+}
+
+/* Import-time flags. Cleared on save, so a row still showing one has not been
+   looked at by a human. */
+.event-labeler .review-flag {
+  background: rgba(255,115,89,.12); border: 1px solid var(--diverge);
+  border-radius: 4px; padding: 6px 9px; font-size: 11.5px; margin-bottom: 10px;
+}
+
+/* ---------- bracket arming ---------- */
+.event-labeler .arm { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+.event-labeler .arm .btn { font-family: var(--mono); font-size: 11px; padding: 4px 9px; }
+.event-labeler .arm .btn.on {
+  background: var(--probe); border-color: var(--probe); color: #1a1204; font-weight: 600;
+}
+/* count / share toggle, inline in the control row rather than full width */
+.event-labeler .seg-group.tight { display: flex; gap: 0; margin: 0; }
+.event-labeler .seg-group.tight .btn {
+  flex: none; font-family: var(--mono); font-size: 11px; padding: 4px 9px; border-radius: 0;
+}
+.event-labeler .seg-group.tight .btn:first-child { border-radius: 4px 0 0 4px; }
+.event-labeler .seg-group.tight .btn:last-child { border-radius: 0 4px 4px 0; border-left: 0; }
+
+/* ---------- timeseries ---------- */
+.event-labeler #chartWrap {
+  position: relative; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--panel-2); padding: 4px;
+}
+/* Height is set inline: it grows with the number of facet panels. */
+.event-labeler #chart { display: block; width: 100%; cursor: crosshair; user-select: none; }
+.event-labeler #chart text.axis {
+  fill: var(--faint); font-size: 9px; font-family: var(--mono);
+}
+.event-labeler #chart text.facet-label { fill: var(--dim); font-size: 10px; }
+
+.event-labeler .zoom-bar {
+  display: flex; align-items: center; gap: 10px; margin-top: 6px;
+}
+.event-labeler .zoom-bar .eyebrow { color: var(--probe); }
+.event-labeler .zoom-bar .btn { padding: 3px 9px; font-size: 11px; }
+
+/* datetime picker + its clear button */
+.event-labeler .bound-row { display: flex; gap: 5px; align-items: stretch; }
+.event-labeler .bound-row input { flex: 1; min-width: 0; }
+.event-labeler .bound-row .btn.clear {
+  flex: none; padding: 0 9px; font-size: 11px; color: var(--dim);
+}
+.event-labeler .bound-row .btn.clear:hover:not(:disabled) {
+  border-color: var(--diverge); color: var(--diverge);
+}
+.event-labeler #tip {
+  position: absolute; pointer-events: none; background: var(--ink);
+  border: 1px solid var(--line); border-radius: 3px; padding: 4px 7px;
+  font-family: var(--mono); font-size: 10px; white-space: pre; z-index: 3;
+}
+.event-labeler .legend {
+  font-family: var(--mono); font-size: 10px; color: var(--faint);
+  display: flex; gap: 4px 14px; flex-wrap: wrap; margin-top: 5px;
+}
+.event-labeler .legend .swatch {
+  display: inline-block; width: 9px; height: 9px; border-radius: 2px;
+  vertical-align: -1px; margin-right: 4px;
+}
+
+/* ---------- grading rail ---------- */
+.event-labeler .c-true     { --sel: var(--diverge); }
+.event-labeler .c-false    { --sel: var(--agree); }
+.event-labeler .c-disputed { --sel: var(--sealed); }
+
+.event-labeler .cov {
+  font-family: var(--mono); font-size: 10.5px; white-space: pre-wrap;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px;
+  padding: 8px; margin-bottom: 12px; color: var(--dim); overflow-x: auto;
+}
+.event-labeler .save-msg {
+  font-family: var(--mono); font-size: 11px; margin-top: 7px; text-align: center;
+}
+.event-labeler .save-msg.ok   { color: var(--agree); }
+.event-labeler .save-msg.err  { color: var(--diverge); }
+.event-labeler .save-msg.warn { color: var(--probe); }
+
+.event-labeler .derived-box {
+  border: 1px dashed var(--agree); border-radius: 5px; padding: 12px; margin-top: 16px;
+}
+.event-labeler .derived-box .eyebrow { color: var(--agree); display: block; margin-bottom: 5px; }
+.event-labeler .derived-box dl { margin: 0; font-family: var(--mono); font-size: 11px; }
+.event-labeler .derived-box dt { color: var(--faint); margin-top: 6px; }
+.event-labeler .derived-box dd { margin: 1px 0 0; }
+.event-labeler .derived-box .hint { color: var(--faint); font-size: 11px; margin: 10px 0 0; }
