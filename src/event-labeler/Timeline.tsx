@@ -45,9 +45,16 @@ export interface TimelineProps {
   markers?: Marker[];
 }
 
-const W = 1000;
-const L = 40;
-const R = 12;
+// Exported so a chart stacked underneath this one (the interval labeller's
+// analysis panels) can share the horizontal geometry exactly. Two time charts
+// on the same page whose x axes are a few pixels apart are worse than one.
+export const CHART_W = 1000;
+export const CHART_L = 40;
+export const CHART_R = 12;
+
+const W = CHART_W;
+const L = CHART_L;
+const R = CHART_R;
 const TOP = 8;
 const AXIS = 18;
 const GAP = 6;

@@ -93,7 +93,8 @@ reinterpreted under a partition it was not drawn under.
   "probe_cc": "TZ", "probe_asn": 33765, "domain": "telegram.org",
   "window_start": "2026-03-02T00:00:00", "window_end": "2026-03-09T00:00:00",
 
-  "verdict": "quiet_observed",   // quiet_observed | event_present | uncertain | unusable
+  "verdict": "quiet_observed",   // quiet_observed | blocked_throughout
+                                 // | event_present | uncertain | unusable
   "confidence": "probable",
   "rationale": "…",
 
@@ -115,6 +116,40 @@ reinterpreted under a partition it was not drawn under.
 `volume_band` follows the `ongoing`/`size_band` rule: derived on read, never
 stored in a form an analyst can contradict.
 
+## The verdict answers "did it change", not "was it blocked"
+
+**Changed in the building: `blocked_throughout` is a fifth verdict.** The
+original four conflated two questions that come apart on a common case — a week
+in the middle of a long-running block. The detector is a changepoint detector,
+so what it can be right or wrong about is a *transition*; that week has none, so
+it belongs in the false-alarm denominator alongside genuinely quiet weeks. But
+it is not quiet, and neither of the two available labels was correct for it:
+
+- `quiet_observed` would assert "no interference visible" about a blocked week,
+  and put it in the pool later mined as clean negatives for the measurement
+  grain.
+- `event_present` is worse, and was what the overlap check steered analysts
+  toward: it credits the detector with a detection it never earned (it missed
+  the real onset weeks earlier) *and* removes the week from the denominator, so
+  a detector that re-fires throughout a long block scores clean on both recall
+  and false alarms. A six-month event covering twenty-six weeks corrupted all
+  twenty-six.
+
+How the estimator reads them:
+
+```
+false-alarm denominator   quiet_observed + blocked_throughout
+recall / latency          event_present only
+clean negatives           quiet_observed only
+excluded, and counted     uncertain, unusable
+```
+
+A mechanism shift inside an ongoing block (injected DNS answers giving way to
+TLS resets) is a transition and stays `event_present`; so does a recovery, with
+the direction named in the rationale. If direction ever needs to be machine
+readable, the next move is a separate `onset_direction` field rather than more
+verdict values.
+
 ## Efficiency
 
 Most random cell-weeks are trivially quiet and carry almost no information per
@@ -133,16 +168,30 @@ which is what makes the partition hold either way.
 
 Closer to the measurement labeler than to the event editor: a drawn queue, one
 cell-week at a time, the observation-outcome timeline from `Timeline.tsx`,
-blinded until commit, `Q` / `E` / `U` plus a rationale. Lives in
+blinded until commit, `Q` / `B` / `E` / `U` / `X` plus a rationale. Lives in
 `src/interval-labeler/`, reusing that timeline (extended with markers for the
 revealed changepoints), the labeller shell CSS and the sampler plumbing.
 
-Two things the note did not anticipate and the UI needed. The chart pads the
-week on both sides, because a week inside a long-running block has no change in
-it and reads as quiet from its own shape alone. And the queue takes an imported
-event corpus, flagging cell-weeks a known event overlaps: that is the
-contamination cross-check, and it is external ground truth rather than detector
-output, so showing it before commit is not unblinding.
+Three things the note did not anticipate and the UI needed.
+
+The chart **pads the week on both sides**. That is not context: a week inside a
+long-running block and a week where nothing is wrong are identical from inside
+the band, and the padding is the only evidence for the `Q` / `B` distinction
+above.
+
+The queue takes an **imported event corpus**, flagging cell-weeks a known event
+overlaps — the contamination cross-check. It is external ground truth rather
+than detector output, so showing it before commit is not unblinding. The flag
+names the verdict the overlap implies, since an overlap alone does not decide
+between `event_present` and `blocked_throughout`.
+
+The commit opens **analysis panels** under the observation chart, on the same
+time axis: blocking probability, the per-layer scores, the DNS triple, and a
+strip naming the outcome that carried each bucket. This is where an analyst
+sees *why* the detector did or did not fire on a week they have already judged
+on the evidence. The per-layer values are drawn as independent lines rather
+than stacked — they are componentwise maxima and routinely sum above one, which
+is the misreading the user guide §3.5 exists to prevent.
 
 ## Sampler
 

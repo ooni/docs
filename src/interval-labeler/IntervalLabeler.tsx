@@ -10,7 +10,13 @@ import CellPane from "./CellPane";
 import VerdictPanel, { type Draft } from "./VerdictPanel";
 import Guide from "./Guide";
 import { ExportDialog, ImportEventsDialog } from "./IoDialogs";
-import { fetchCellSeries, fetchIntervalReveal, type CellSeries } from "./api";
+import {
+  fetchCellAnalysis,
+  fetchCellSeries,
+  fetchIntervalReveal,
+  type AnalysisSeries,
+  type CellSeries,
+} from "./api";
 import { overlappingEvents, parseEventCorpus, type Overlap } from "./overlap";
 import { readState, uuid, writeState } from "./storage";
 import {
@@ -90,6 +96,12 @@ export default function IntervalLabeler() {
   const [whyRequiredError, setWhyRequiredError] = useState(false);
   const [committedThisRow, setCommittedThisRow] = useState(false);
 
+  // Pipeline scores. Fetched only once the row is unsealed, so a commit is
+  // what puts them on the wire as well as on the screen.
+  const [analysis, setAnalysis] = useState<AnalysisSeries | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+
   const [sealed, setSealed] = useState(true);
   const [reveal, setReveal] = useState<IntervalReveal | null>(null);
   const [revealLoading, setRevealLoading] = useState(false);
@@ -136,8 +148,27 @@ export default function IntervalLabeler() {
     }
   }
 
+  async function loadAnalysis(row: IntervalRow, opts?: { grain?: "hour" | "day"; padDays?: number }) {
+    setAnalysisLoading(true);
+    setAnalysisError(null);
+    try {
+      setAnalysis(
+        await fetchCellAnalysis(stateRef.current.apiBase, row, {
+          grain: opts?.grain ?? grain,
+          padDays: opts?.padDays ?? padDays,
+        })
+      );
+    } catch (e: any) {
+      setAnalysisError(String(e?.message || e));
+      setAnalysis(null);
+    } finally {
+      setAnalysisLoading(false);
+    }
+  }
+
   async function showReveal(row: IntervalRow) {
     setSealed(false);
+    loadAnalysis(row);
     setRevealLoading(true);
     setRevealError(null);
     setReveal(null);
@@ -163,6 +194,8 @@ export default function IntervalLabeler() {
     setSealed(true);
     setReveal(null);
     setRevealError(null);
+    setAnalysis(null);
+    setAnalysisError(null);
     setCommittedVerdict(null);
     setZoom(null);
     loadSeries(row);
@@ -315,6 +348,7 @@ export default function IntervalLabeler() {
       }
       const map: Record<string, IntervalVerdict> = {
         q: "quiet_observed",
+        b: "blocked_throughout",
         e: "event_present",
         u: "uncertain",
         x: "unusable",
@@ -392,6 +426,10 @@ export default function IntervalLabeler() {
                 series={series}
                 loading={seriesLoading}
                 error={seriesError}
+                analysis={analysis}
+                analysisLoading={analysisLoading}
+                analysisError={analysisError}
+                sealed={sealed}
                 overlaps={overlaps}
                 corpusLoaded={S.events.length > 0}
                 grain={grain}
@@ -402,14 +440,19 @@ export default function IntervalLabeler() {
                 onGrain={(g) => {
                   setGrain(g);
                   loadSeries(current, { grain: g });
+                  if (!sealed) loadAnalysis(current, { grain: g });
                 }}
                 onPadDays={(d) => {
                   setPadDays(d);
                   loadSeries(current, { padDays: d });
+                  if (!sealed) loadAnalysis(current, { padDays: d });
                 }}
                 onMode={setMode}
                 onZoom={setZoom}
-                onReload={() => loadSeries(current)}
+                onReload={() => {
+                  loadSeries(current);
+                  if (!sealed) loadAnalysis(current);
+                }}
               />
             ) : (
               <div className="banner">

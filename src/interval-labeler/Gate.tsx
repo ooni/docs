@@ -24,9 +24,9 @@ export default function Gate({ initialWho, initialApiBase, resumeCount, onStart,
         <span className="eyebrow">Quiet-interval adjudication</span>
         <h1>Who is labelling?</h1>
         <p>
-          One cell-week at a time: was there interference on this network, for this domain, in
-          this week? Most of them are quiet, and that is the point — a false-alarm rate needs
-          quiet time counted, and quiet time only counts if it was sampled from a frame. Your name
+          One cell-week at a time: did anything change on this network, for this domain, in this
+          week? Most weeks nothing did, and that is the point — a false-alarm rate needs the
+          silent weeks counted, and they only count if they were sampled from a frame. Your name
           goes on every row you commit. Nothing is written back to OONI; export when you finish.
         </p>
         <label className="field">

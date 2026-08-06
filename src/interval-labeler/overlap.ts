@@ -10,8 +10,9 @@ import type { IntervalRow } from "./types";
  * emergency. A *reported* one is a different matter: leaving it in the quiet
  * stratum charges the detector for being right. Dropping the row would be
  * worse — the denominator shrinks silently and nothing records why — so an
- * overlap is flagged, the analyst is expected to commit `event_present`, and
- * the ids are carried on the label.
+ * overlap is flagged, the analyst commits `event_present` when a transition
+ * falls inside the week or `blocked_throughout` when the event merely covers
+ * it, and the ids are carried on the label either way.
  *
  * This deliberately reads the *event corpus*, not the detector. It is external
  * ground truth, so showing it before commit is not unblinding; showing an
@@ -30,6 +31,14 @@ export interface Overlap {
   event_class: string;
   /** Why it matched, so a wrong flag is arguable rather than mysterious. */
   scope_note: string;
+  /**
+   * True when the event's span covers the whole week, so no edge of it falls
+   * inside — the case that is `blocked_throughout` rather than
+   * `event_present`. Without this distinction a six-month event turns all
+   * twenty-six of its weeks into "detected event" weeks and takes them out of
+   * the false-alarm denominator.
+   */
+  coversWholeWindow: boolean;
 }
 
 /**
@@ -71,6 +80,12 @@ export function overlappingEvents(row: IntervalRow, events: unknown[]): Overlap[
       event_id: e.event_id,
       title: e.title || e.slug || e.event_id,
       event_class: e.event_class || "true_event",
+      // Read against the *widest* bracket: if even the latest possible onset
+      // is before the week opens and the earliest possible resolution is
+      // after it closes, no transition can be inside it.
+      coversWholeWindow:
+        (parse(e.onset_latest) || start) <= wStart &&
+        (e.resolution_earliest ? parse(e.resolution_earliest) : Infinity) >= wEnd,
       scope_note:
         (asnListed ? `AS${row.probe_asn} listed` : `ASNs ${e.asn_scope_kind}`) +
         ", " +

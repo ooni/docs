@@ -36,11 +36,18 @@ const CHOICES: { v: IntervalVerdict; key: string; cls: string; text: string; hin
     hint: "no interference visible in OONI's data for this cell, this week",
   },
   {
+    v: "blocked_throughout",
+    key: "B",
+    cls: "c-blocked-throughout",
+    text: "Blocked throughout",
+    hint: "interference all week, but no transition inside it — the detector should stay silent",
+  },
+  {
     v: "event_present",
     key: "E",
     cls: "c-event",
     text: "Event present",
-    hint: "something real happened in this window",
+    hint: "the state changed inside this window: an onset, or a recovery",
   },
   {
     v: "uncertain",
@@ -80,8 +87,8 @@ export default function VerdictPanel(props: VerdictPanelProps) {
       <span className="eyebrow">Your judgment</span>
       <h3>{row ? `${row.domain} · AS${row.probe_asn}` : "Nothing loaded"}</h3>
       <p className="hint">
-        Was there interference in <em>this cell, this week</em>? Not whether the country was
-        blocking, and not whether the detector was right.
+        Did the state <em>change</em> inside this week? Not whether the cell is blocked — a week
+        inside an ongoing block has no transition in it — and not whether the detector was right.
       </p>
 
       <div className="choices">
@@ -102,9 +109,20 @@ export default function VerdictPanel(props: VerdictPanelProps) {
       {draft.verdict === "quiet_observed" && props.overlaps.length > 0 && (
         <div className="stat" style={{ color: "var(--diverge)", margin: "-6px 0 12px" }}>
           A known event overlaps this window. Calling it quiet charges the detector for being
-          right — say in the rationale why the corpus entry does not apply here.
+          right — say in the rationale why the corpus entry does not apply here, or use{" "}
+          <b>blocked throughout</b> if it covers the week without changing inside it.
         </div>
       )}
+      {draft.verdict === "event_present" &&
+        props.overlaps.length > 0 &&
+        props.overlaps.every((o) => o.coversWholeWindow) && (
+          <div className="stat" style={{ color: "var(--probe)", margin: "-6px 0 12px" }}>
+            Every overlapping event covers this week without starting or ending inside it, so
+            there is no transition here for a detector to catch. Unless you can see one in the
+            chart, this is <b>blocked throughout</b> — scoring it as an event credits a detection
+            nobody earned.
+          </div>
+        )}
 
       <span className="eyebrow">Confidence</span>
       <div className="seg-group">
@@ -223,13 +241,22 @@ function RevealBox({
   const flag =
     verdict === "quiet_observed" && alerted
       ? { cls: "diff", text: "Alerted in a window you called quiet — a false alarm, on the record" }
-      : verdict === "event_present" && !alerted
-        ? { cls: "diff", text: "Did not alert in a window you called an event — a miss" }
-        : verdict === "quiet_observed"
-          ? { cls: "same", text: "Quiet, and the detector agreed" }
-          : verdict === "event_present"
-            ? { cls: "same", text: "Event, and the detector fired" }
-            : null;
+      : verdict === "blocked_throughout" && alerted
+        ? {
+            cls: "diff",
+            text:
+              "Alerted inside an ongoing block — a false alarm too: the onset was before this " +
+              "window, so there was nothing here to catch",
+          }
+        : verdict === "event_present" && !alerted
+          ? { cls: "diff", text: "Did not alert in a window you called an event — a miss" }
+          : verdict === "quiet_observed"
+            ? { cls: "same", text: "Quiet, and the detector agreed" }
+            : verdict === "blocked_throughout"
+              ? { cls: "same", text: "Blocked throughout, and the detector stayed silent" }
+              : verdict === "event_present"
+                ? { cls: "same", text: "Event, and the detector fired" }
+                : null;
 
   return (
     <div className="reveal-box">

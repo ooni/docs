@@ -10,7 +10,32 @@
 // of cell-weeks and there is no way to reconstruct a selection probability
 // after the fact.
 
-export type IntervalVerdict = "quiet_observed" | "event_present" | "uncertain" | "unusable";
+/**
+ * The verdict answers one question — *did the state change inside this week?*
+ * — because that is what a changepoint detector can be right or wrong about.
+ *
+ * `blocked_throughout` exists because state and change come apart. A week in
+ * the middle of a long-running block has no transition in it, so the detector
+ * should stay silent and an alert there is a false alarm; but the cell is not
+ * quiet, and calling it `quiet_observed` would put a blocked week into the pool
+ * of clean negatives. Calling it `event_present` is worse: it credits the
+ * detector with a detection it did not earn — it missed the real onset weeks
+ * earlier — and removes the week from the false-alarm denominator, so alert
+ * spam inside long blocks scores clean on both metrics.
+ *
+ * How the harness reads them:
+ *
+ *     false-alarm denominator  quiet_observed + blocked_throughout
+ *     recall / latency         event_present only
+ *     clean negatives          quiet_observed only
+ *     excluded, and counted    uncertain, unusable
+ */
+export type IntervalVerdict =
+  | "quiet_observed"
+  | "blocked_throughout"
+  | "event_present"
+  | "uncertain"
+  | "unusable";
 export type Confidence = "certain" | "probable" | "uncertain";
 
 /**

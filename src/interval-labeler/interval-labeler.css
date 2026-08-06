@@ -16,6 +16,10 @@
    event borrows the diverge colour the measurement queue uses for blocked, so
    the two grains do not disagree about what red means. */
 .interval-labeler .c-quiet    { --sel: var(--agree); }
+/* Amber, between the green of quiet and the red of an event: it shares the
+   "detector should stay silent" side with quiet, and the "this cell is
+   blocked" side with event. */
+.interval-labeler .c-blocked-throughout { --sel: var(--probe); }
 .interval-labeler .c-event    { --sel: var(--diverge); }
 .interval-labeler .c-un       { --sel: var(--sealed); }
 .interval-labeler .c-unusable { --sel: var(--faint); }
@@ -39,3 +43,16 @@
 .interval-labeler .banner.warn li { font-size: 12px; }
 
 .interval-labeler .reveal-box dd { white-space: pre-wrap; }
+
+/* ---------- analysis panels ---------- */
+/* Pipeline scores, under the observation chart and after the commit. Set off
+   from the chart above so the boundary between "what the probes got" and
+   "what the pipeline concluded" is visible, not just implied by position. */
+.interval-labeler .analysis-block {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.interval-labeler .analysis-block .rail-h { margin-bottom: 8px; }
+.interval-labeler .analysis-block .sealed-box { margin-top: 0; }
+.interval-labeler .analysis-chart { margin-bottom: 4px; }

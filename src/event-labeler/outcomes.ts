@@ -38,6 +38,15 @@ export const layerOf = (outcome: string): string => {
 
 export const outcomeLabel = (outcome: string): string => (outcome === OK ? "ok" : outcome);
 
+/**
+ * The mid shade of each layer family, for charts keyed by layer rather than by
+ * failure string — so a DNS line in the analysis panels is the same hue as the
+ * DNS band in the observation chart above it.
+ */
+export const LAYER_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(FAMILIES).map(([layer, shades]) => [layer, shades[1]])
+);
+
 /** Ordered outcome list -> colour per outcome. Order decides the shade. */
 export function assignOutcomeColors(outcomes: string[]): Record<string, string> {
   const used: Record<string, number> = {};

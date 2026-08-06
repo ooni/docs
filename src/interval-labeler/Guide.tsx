@@ -99,8 +99,17 @@ export default function Guide({ open, anchor, onClose }: GuideProps) {
 
         <h2 id="g-job">What you are deciding</h2>
         <p>
-          Look at the failure mix for this cell across the padded window and answer one question:
-          did something change inside the highlighted week?
+          Look at the failure mix for this cell across the padded window and answer one question:{" "}
+          <b>did the state change inside the highlighted week?</b> Change, not level — the detector
+          is a changepoint detector, so a transition is the only thing it can be right or wrong
+          about.
+        </p>
+        <p>
+          That is why there are two negative verdicts rather than one. A week can have no
+          transition in it because nothing was happening, or because the same thing was happening
+          all week. Both mean the detector should stay silent, and both belong in the false-alarm
+          denominator — but only the first is a week where OONI saw nothing wrong, and only the
+          first can be reused as a clean negative elsewhere.
         </p>
         <div className="verdict">
           <h4>
@@ -112,14 +121,32 @@ export default function Guide({ open, anchor, onClose }: GuideProps) {
             inside the band.
           </p>
         </div>
+        <div className="verdict blocked">
+          <h4>
+            <kbd>B</kbd> blocked_throughout
+          </h4>
+          <p>
+            Interference runs across the whole week, and starts before it. There is no step inside
+            the band because the step already happened — look at the padding to tell this apart
+            from a week where the block begins. The detector should be silent here, so an alert is
+            a false alarm just as it is in a quiet week.
+          </p>
+          <p className="ex">
+            not quiet: the cell is blocked. Not an event either: nothing changed in this window.
+          </p>
+        </div>
         <div className="verdict">
           <h4>
             <kbd>E</kbd> event_present
           </h4>
           <p>
-            Something real is in this window: a step into a failure mode, a collapse of ok, a
-            known event from the imported corpus. It does not have to be an event anyone reported.
-            This verdict is also what a flagged overlap should get — see below.
+            The state changed inside this window — a step into a failure mode, a collapse of ok, or
+            a recovery where a block lifts. Say which direction in the rationale. It does not have
+            to be an event anyone reported.
+          </p>
+          <p className="ex">
+            a mechanism shift mid-block (injected DNS answers giving way to TLS resets) is also a
+            change, and belongs here rather than in blocked_throughout
           </p>
         </div>
         <div className="verdict un">
@@ -143,11 +170,56 @@ export default function Guide({ open, anchor, onClose }: GuideProps) {
         </div>
 
         <div className="callout warn">
-          <span className="eyebrow">A uniformly blocked cell is not quiet</span>
-          A week in the middle of a long-running block has no change in it, and nothing about its
-          shape says so. That is why the chart pads the week on both sides: judge the week, but
-          look at the fortnight.
+          <span className="eyebrow">Why the padding exists</span>
+          <p>
+            A week in the middle of a long-running block and a week where nothing is wrong look
+            identical from inside the band: flat, no step. Only the fortnight either side tells
+            them apart, which is the whole reason the chart pads the window. Judge the week; read
+            the fortnight.
+          </p>
+          <p>
+            Get this one wrong in the <code>event_present</code> direction and it costs twice: the
+            detector is credited with a detection it never earned — it missed the real onset weeks
+            earlier — and the week leaves the false-alarm denominator, so a detector that re-fires
+            all through a long block scores clean on both metrics.
+          </p>
         </div>
+
+        <h3>How the harness reads the five verdicts</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Verdict</th>
+              <th>Counts toward</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <code>quiet_observed</code>
+              </td>
+              <td>false-alarm denominator; the only verdict reusable as a clean negative</td>
+            </tr>
+            <tr>
+              <td>
+                <code>blocked_throughout</code>
+              </td>
+              <td>false-alarm denominator — an alert here is a duplicate on an ongoing block</td>
+            </tr>
+            <tr>
+              <td>
+                <code>event_present</code>
+              </td>
+              <td>recall and detection latency</td>
+            </tr>
+            <tr>
+              <td>
+                <code>uncertain</code> · <code>unusable</code>
+              </td>
+              <td>excluded, and reported as an excluded count rather than dropped</td>
+            </tr>
+          </tbody>
+        </table>
 
         <h2 id="g-quiet">Why the verdict is "quiet observed"</h2>
         <p>
@@ -162,8 +234,10 @@ export default function Guide({ open, anchor, onClose }: GuideProps) {
           An unreported real event inside a week called quiet inflates the measured false-alarm
           rate. That makes the detector look worse than it is, which is the direction to err in.
           A <em>reported</em> one is different: when the queue flags an overlap with the event
-          corpus, commit <code>event_present</code>. Do not skip the row — dropping it shrinks
-          the denominator with nothing on the record to say why.
+          corpus, commit <code>event_present</code> if the event starts or ends inside the week,
+          and <code>blocked_throughout</code> if it merely covers it — the banner says which,
+          per event. Do not skip the row either way; dropping it shrinks the denominator with
+          nothing on the record to say why.
         </div>
 
         <h2 id="g-frame">The frame, the floor and the bands</h2>
@@ -213,10 +287,33 @@ export default function Guide({ open, anchor, onClose }: GuideProps) {
           to find detector bugs, and re-commit if it genuinely changes your mind — the old row is
           superseded, not erased, and both stay in the export.
         </p>
+        <p>
+          The commit also opens the <b>What the pipeline scored</b> panels under the observation
+          chart, on the same time axis: the blocking probability, the per-layer scores, the DNS
+          triple, and a strip showing which outcome carried each bucket. That is where you see{" "}
+          <em>why</em> the detector did or did not fire on a week you have already judged on the
+          evidence. Two things to keep in mind while reading them:
+        </p>
+        <ul>
+          <li>
+            <code>blocked_probability_mean</code> and <code>blocked_max</code> are different
+            statistics, not bounds on each other — the first averages the per-measurement blocking
+            probability, the second is the largest per-layer score, so either can exceed the other.
+          </li>
+          <li>
+            The DNS <code>ok</code> / <code>down</code> / <code>blocked</code> values are{" "}
+            <b>componentwise maxima</b>, not a distribution: they routinely sum above 1, and{" "}
+            <code>dns_ok</code> sits at 1.0 in almost every bucket because <em>something</em> in it
+            resolved cleanly. They are drawn as three independent lines for that reason — stacking
+            them would be the error the user guide calls "three existential answers wearing a state
+            vector".
+          </li>
+        </ul>
 
         <h2 id="g-keys">Keyboard</h2>
         <p>
-          <kbd>Q</kbd> <kbd>E</kbd> <kbd>U</kbd> <kbd>X</kbd> set the verdict · <kbd>1</kbd>{" "}
+          <kbd>Q</kbd> <kbd>B</kbd> <kbd>E</kbd> <kbd>U</kbd> <kbd>X</kbd> set the verdict ·{" "}
+          <kbd>1</kbd>{" "}
           <kbd>2</kbd> <kbd>3</kbd> set confidence · <kbd>Enter</kbd> commits, and again moves on
           · <kbd>N</kbd> next unlabelled · <kbd>?</kbd> this guide.
         </p>
