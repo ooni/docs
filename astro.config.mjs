@@ -2,6 +2,7 @@ import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import starlightOpenAPI, { openAPISidebarGroups } from "starlight-openapi";
 import vercel from "@astrojs/vercel/static";
+import react from "@astrojs/react";
 import { mermaid } from "./src/plugins/mermaid";
 
 // https://astro.build/config
@@ -76,5 +77,6 @@ export default defineConfig({
       ],
       customCss: ["./src/styles/custom.css"],
     }),
+    react(),
   ],
 });
