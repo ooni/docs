@@ -52,10 +52,10 @@ export default function DrawDialog({ open, apiBase, onClose, onDrawn, onGuideLin
     if (!dlg) return;
     if (open && !dlg.open) {
       const today = new Date();
-      // Twelve weeks by default. The frame is snapped to whole ISO weeks
+      // four weeks by default. The frame is snapped to whole ISO weeks
       // server-side, so a partial week at either end never enters it.
       setUntil(isoDate(today));
-      setSince(isoDate(new Date(today.getTime() - 84 * 864e5)));
+      setSince(isoDate(new Date(today.getTime() - 24 * 864e5)));
       setErr("");
       dlg.showModal();
     } else if (!open && dlg.open) {
