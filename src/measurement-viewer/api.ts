@@ -75,7 +75,8 @@ export async function fetchCtrlGroundTruth(
 }
 
 export interface AggregationParams {
-  hostname: string;
+  // A target can span several hostnames; the per-day buckets sum across them
+  hostnames: string[];
   probeASN: number;
   // When set the aggregation is restricted to observations whose resolver_asn
   // matches; when undefined every resolver is included.
@@ -96,7 +97,7 @@ export async function fetchAggregatedObservations(
   });
   q.append("group_by", "timestamp");
   q.append("group_by", "failure");
-  q.append("hostname", p.hostname);
+  for (const h of p.hostnames) q.append("hostname", h);
   q.append("probe_asn", String(p.probeASN));
   if (p.resolverASN !== undefined) {
     q.append("resolver_asn", String(p.resolverASN));

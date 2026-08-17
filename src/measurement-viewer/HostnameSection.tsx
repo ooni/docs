@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchAggregatedObservations } from "./api";
-import { ctrlForEndpoint, hasTCP, hasTLS, hasHTTP } from "./derive";
-import type { HostnameGroup } from "./derive";
+import {
+  ctrlForEndpoint,
+  hasTCP,
+  hasTLS,
+  hasHTTP,
+  observationHostname,
+} from "./derive";
+import type { TargetGroup } from "./derive";
 import FailureChart, {
   FAILURE_FAMILIES,
   NONE_SERIES,
@@ -9,7 +15,11 @@ import FailureChart, {
   maxStack,
 } from "./FailureChart";
 import type { DayBucket } from "./FailureChart";
-import type { MeasurementMeta, WebObservation } from "./types";
+import type {
+  CtrlGroundTruthEntry,
+  MeasurementMeta,
+  WebObservation,
+} from "./types";
 
 const fmt = new Intl.NumberFormat("en-US");
 
@@ -66,25 +76,59 @@ function AsnLabel({
   );
 }
 
-// How a probe DNS answer relates to the control ground truth
+// The control ground truth has no target_id, so everything here is keyed by
+// hostname: each probe answer is compared against the control entries of the
+// hostname it was observed on.
+interface CtrlByHostname {
+  dnsIPs: Map<string, Set<string>>; // hostname -> IPs in control DNS answers
+  tlsConsistent: Map<string, Map<string, boolean>>; // hostname -> ip -> ok
+  entries: Map<string, CtrlGroundTruthEntry[]>; // hostname -> ctrl rows
+}
+
+function indexCtrlByHostname(ctrl: CtrlGroundTruthEntry[]): CtrlByHostname {
+  const dnsIPs = new Map<string, Set<string>>();
+  const tlsConsistent = new Map<string, Map<string, boolean>>();
+  const entries = new Map<string, CtrlGroundTruthEntry[]>();
+  for (const c of ctrl) {
+    const list = entries.get(c.hostname) ?? [];
+    list.push(c);
+    entries.set(c.hostname, list);
+    if (c.in_dns_answers) {
+      const s = dnsIPs.get(c.hostname) ?? new Set();
+      s.add(c.ip);
+      dnsIPs.set(c.hostname, s);
+    }
+    const m = tlsConsistent.get(c.hostname) ?? new Map<string, boolean>();
+    m.set(c.ip, (m.get(c.ip) ?? false) || c.tls_consistent);
+    tlsConsistent.set(c.hostname, m);
+  }
+  return { dnsIPs, tlsConsistent, entries };
+}
+
+type AnswerStatus =
+  | "in_control"
+  | "tls_consistent"
+  | "inconsistent"
+  | "unknown"
+  | null;
+
+// How a probe DNS answer relates to the control ground truth of its hostname.
+// null when there is nothing to compare against (no answer, or the control
+// never measured this hostname) so we don't flag absence of data as anomaly.
 function answerConsistency(
+  hostname: string,
   ip: string | null,
-  ctrlDnsIPs: Set<string>,
-  tlsConsistentByIP: Map<string, boolean>
-): "in_control" | "tls_consistent" | "inconsistent" | "unknown" | null {
-  if (!ip) return null;
-  if (ctrlDnsIPs.has(ip)) return "in_control";
-  const tls = tlsConsistentByIP.get(ip);
+  ctrl: CtrlByHostname
+): AnswerStatus {
+  if (!ip || !ctrl.entries.has(hostname)) return null;
+  if (ctrl.dnsIPs.get(hostname)?.has(ip)) return "in_control";
+  const tls = ctrl.tlsConsistent.get(hostname)?.get(ip);
   if (tls === true) return "tls_consistent";
   if (tls === false) return "inconsistent";
   return "unknown";
 }
 
-function AnswerConsistencyChips({
-  status,
-}: {
-  status: ReturnType<typeof answerConsistency>;
-}) {
+function AnswerConsistencyChips({ status }: { status: AnswerStatus }) {
   if (status === null) return null;
   if (status === "in_control")
     return <span className="chip chip-ok">✓ in control DNS</span>;
@@ -101,33 +145,101 @@ function AnswerConsistencyChips({
   );
 }
 
-function DnsSection({ group }: { group: HostnameGroup }) {
-  const ctrlAnswerIPs = group.ctrl.filter((c) => c.in_dns_answers);
-  const dnsCounts = group.ctrl[0];
-  if (group.dnsByResolver.length === 0 && ctrlAnswerIPs.length === 0) return null;
-
-  const ctrlDnsIPs = new Set(ctrlAnswerIPs.map((c) => c.ip));
-  // Did any TLS handshake against this IP succeed in the control? Catches
-  // CDN-style answers that never show up in the control's own DNS.
-  const tlsConsistentByIP = new Map<string, boolean>();
-  for (const c of group.ctrl) {
-    tlsConsistentByIP.set(
-      c.ip,
-      (tlsConsistentByIP.get(c.ip) ?? false) || c.tls_consistent
-    );
-  }
-  const probeAnswerIPs = new Set(
-    group.dnsByResolver
-      .flatMap((rg) => rg.queries.map((q) => q.dns_answer))
-      .filter((ip): ip is string => !!ip)
-  );
-  const commonCount = [...probeAnswerIPs].filter((ip) => ctrlDnsIPs.has(ip)).length;
+function CtrlResolutionBlock({
+  hostname,
+  showHostname,
+  ctrlEntries,
+  probeIPs,
+}: {
+  hostname: string;
+  showHostname: boolean;
+  ctrlEntries: CtrlGroundTruthEntry[];
+  probeIPs: Set<string>; // probe DNS answers for this hostname
+}) {
+  const answerIPs = ctrlEntries.filter((c) => c.in_dns_answers);
+  const counts = ctrlEntries[0];
+  const commonCount = [...probeIPs].filter((ip) =>
+    answerIPs.some((c) => c.ip === ip)
+  ).length;
   // IPs the probe saw in common with the control float to the top of the list
-  const sortedCtrlIPs = [...ctrlAnswerIPs].sort(
+  const sorted = [...answerIPs].sort(
     (a, b) =>
-      Number(probeAnswerIPs.has(b.ip)) - Number(probeAnswerIPs.has(a.ip)) ||
+      Number(probeIPs.has(b.ip)) - Number(probeIPs.has(a.ip)) ||
       a.ip.localeCompare(b.ip)
   );
+  return (
+    <div>
+      {showHostname && (
+        <div className="text-xs font-mono text-secondary mb-1">{hostname}</div>
+      )}
+      {counts && (
+        <p className="text-xs text-muted mb-1">
+          <strong className="text-secondary">
+            {fmt.format(counts.dns_success_count)}
+          </strong>{" "}
+          resolutions ok ·{" "}
+          <strong className="text-secondary">
+            {fmt.format(counts.dns_nxdomain_count)}
+          </strong>{" "}
+          nxdomain ·{" "}
+          <strong className="text-secondary">
+            {fmt.format(counts.dns_other_failure_count)}
+          </strong>{" "}
+          other failures
+        </p>
+      )}
+      {probeIPs.size > 0 && (
+        <p
+          className={`text-xs mb-2 ${commonCount > 0 ? "badge-ok" : "badge-warn"}`}
+        >
+          {commonCount > 0 ? "✓" : "!"} {commonCount} of {probeIPs.size} probe
+          answer{probeIPs.size === 1 ? "" : "s"} also in control DNS
+        </p>
+      )}
+      <ul className="space-y-1">
+        {sorted.map((c) => {
+          const common = probeIPs.has(c.ip);
+          return (
+            <li
+              key={c.ip + String(c.port)}
+              className={`text-xs ${common ? "ctrl-ip-common" : ""}`}
+            >
+              {common && <span className="badge-ok">✓ </span>}
+              <span className="font-mono">{c.ip}</span>{" "}
+              <AsnLabel asn={c.asn} orgName={c.as_org_name} />
+              {common && <span className="chip chip-ok ml-1">probe answer</span>}
+              {c.is_cloud_provider && <span className="chip ml-1">cloud</span>}
+            </li>
+          );
+        })}
+        {answerIPs.length === 0 && (
+          <li className="text-xs text-muted">
+            No IPs seen in control DNS answers.
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+}
+
+function DnsSection({ group }: { group: TargetGroup }) {
+  const ctrl = useMemo(() => indexCtrlByHostname(group.ctrl), [group.ctrl]);
+  const multiHost = group.hostnames.length > 1;
+  if (group.dnsByResolver.length === 0 && group.ctrl.length === 0) return null;
+
+  // Probe DNS answers per hostname, for the control-side comparison
+  const probeIPsByHost = new Map<string, Set<string>>();
+  for (const rg of group.dnsByResolver) {
+    for (const q of rg.queries) {
+      if (!q.dns_answer) continue;
+      const h = observationHostname(q);
+      const s = probeIPsByHost.get(h) ?? new Set();
+      s.add(q.dns_answer);
+      probeIPsByHost.set(h, s);
+    }
+  }
+  // Hostnames worth a control block: measured by the control, in a stable order
+  const ctrlHostnames = group.hostnames.filter((h) => ctrl.entries.has(h));
 
   return (
     <section className="card">
@@ -148,6 +260,7 @@ function DnsSection({ group }: { group: HostnameGroup }) {
               <table className="data-table text-sm">
                 <thead>
                   <tr>
+                    {multiHost && <th>Host</th>}
                     <th>Type</th>
                     <th>Answer</th>
                     <th>Network</th>
@@ -157,6 +270,11 @@ function DnsSection({ group }: { group: HostnameGroup }) {
                 <tbody>
                   {rg.queries.map((q) => (
                     <tr key={q.observation_idx}>
+                      {multiHost && (
+                        <td className="font-mono text-xs">
+                          {observationHostname(q)}
+                        </td>
+                      )}
                       <td className="font-mono text-xs">{q.dns_query_type ?? "—"}</td>
                       <td>
                         {q.dns_failure ? (
@@ -168,9 +286,9 @@ function DnsSection({ group }: { group: HostnameGroup }) {
                             </span>
                             <AnswerConsistencyChips
                               status={answerConsistency(
+                                observationHostname(q),
                                 q.dns_answer,
-                                ctrlDnsIPs,
-                                tlsConsistentByIP
+                                ctrl
                               )}
                             />
                           </div>
@@ -194,60 +312,22 @@ function DnsSection({ group }: { group: HostnameGroup }) {
         </div>
         <aside className="ctrl-panel">
           <h4 className="ctrl-title">Control resolution</h4>
-          {group.ctrl.length === 0 ? (
-            <p className="text-sm text-muted">No control data for this hostname.</p>
+          {ctrlHostnames.length === 0 ? (
+            <p className="text-sm text-muted">
+              No control data for this target's hostnames.
+            </p>
           ) : (
-            <>
-              {dnsCounts && (
-                <p className="text-xs text-muted mb-1">
-                  <strong className="text-secondary">
-                    {fmt.format(dnsCounts.dns_success_count)}
-                  </strong>{" "}
-                  resolutions ok ·{" "}
-                  <strong className="text-secondary">
-                    {fmt.format(dnsCounts.dns_nxdomain_count)}
-                  </strong>{" "}
-                  nxdomain ·{" "}
-                  <strong className="text-secondary">
-                    {fmt.format(dnsCounts.dns_other_failure_count)}
-                  </strong>{" "}
-                  other failures
-                </p>
-              )}
-              {probeAnswerIPs.size > 0 && (
-                <p
-                  className={`text-xs mb-2 ${
-                    commonCount > 0 ? "badge-ok" : "badge-warn"
-                  }`}
-                >
-                  {commonCount > 0 ? "✓" : "!"} {commonCount} of{" "}
-                  {probeAnswerIPs.size} probe answer
-                  {probeAnswerIPs.size === 1 ? "" : "s"} also in control DNS
-                </p>
-              )}
-              <ul className="space-y-1">
-                {sortedCtrlIPs.map((c) => {
-                  const common = probeAnswerIPs.has(c.ip);
-                  return (
-                    <li
-                      key={c.ip + String(c.port)}
-                      className={`text-xs ${common ? "ctrl-ip-common" : ""}`}
-                    >
-                      {common && <span className="badge-ok">✓ </span>}
-                      <span className="font-mono">{c.ip}</span>{" "}
-                      <AsnLabel asn={c.asn} orgName={c.as_org_name} />
-                      {common && <span className="chip chip-ok ml-1">probe answer</span>}
-                      {c.is_cloud_provider && <span className="chip ml-1">cloud</span>}
-                    </li>
-                  );
-                })}
-                {ctrlAnswerIPs.length === 0 && (
-                  <li className="text-xs text-muted">
-                    No IPs seen in control DNS answers.
-                  </li>
-                )}
-              </ul>
-            </>
+            <div className="space-y-3">
+              {ctrlHostnames.map((h) => (
+                <CtrlResolutionBlock
+                  key={h}
+                  hostname={h}
+                  showHostname={multiHost}
+                  ctrlEntries={ctrl.entries.get(h) ?? []}
+                  probeIPs={probeIPsByHost.get(h) ?? new Set()}
+                />
+              ))}
+            </div>
           )}
         </aside>
       </div>
@@ -286,7 +366,8 @@ function HttpCell({ o }: { o: WebObservation }) {
   );
 }
 
-function EndpointsSection({ group }: { group: HostnameGroup }) {
+function EndpointsSection({ group }: { group: TargetGroup }) {
+  const multiHost = group.hostnames.length > 1;
   if (group.endpoints.length === 0) return null;
   return (
     <section className="card">
@@ -311,6 +392,11 @@ function EndpointsSection({ group }: { group: HostnameGroup }) {
                       {o.ip}
                       {o.port != null ? `:${o.port}` : ""}
                     </div>
+                    {multiHost && o.hostname && o.hostname !== o.ip && (
+                      <div className="text-xs text-muted font-mono">
+                        {o.hostname}
+                      </div>
+                    )}
                     <AsnLabel asn={o.ip_asn} orgName={o.ip_as_org_name} />
                     <div className="mt-0.5 space-x-1">
                       {o.ip_is_bogon && <span className="chip chip-warn">bogon</span>}
@@ -388,7 +474,7 @@ function EndpointsSection({ group }: { group: HostnameGroup }) {
   );
 }
 
-function StandaloneHttpSection({ group }: { group: HostnameGroup }) {
+function StandaloneHttpSection({ group }: { group: TargetGroup }) {
   if (group.standaloneHTTP.length === 0) return null;
   return (
     <section className="card">
@@ -437,14 +523,14 @@ interface ChartData {
 }
 
 function FailurePanel({
-  hostname,
+  hostnames,
   meta,
   apiBase,
   resolverASN,
   since,
   until,
 }: {
-  hostname: string;
+  hostnames: string[];
   meta: MeasurementMeta;
   apiBase: string;
   resolverASN: number | null;
@@ -453,12 +539,14 @@ function FailurePanel({
 }) {
   const [data, setData] = useState<ChartData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const hostKey = hostnames.join(",");
 
   useEffect(() => {
+    if (hostnames.length === 0) return;
     let cancelled = false;
     setData(null);
     setError(null);
-    const common = { hostname, probeASN: meta.probe_asn, since, until };
+    const common = { hostnames, probeASN: meta.probe_asn, since, until };
     Promise.all([
       fetchAggregatedObservations(apiBase, {
         ...common,
@@ -479,7 +567,8 @@ function FailurePanel({
     return () => {
       cancelled = true;
     };
-  }, [apiBase, hostname, meta.probe_asn, resolverASN, since, until]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiBase, hostKey, meta.probe_asn, resolverASN, since, until]);
 
   const yMax = data ? Math.max(maxStack(data.isp), maxStack(data.all)) : 0;
 
@@ -494,12 +583,15 @@ function FailurePanel({
     return series;
   }, [data]);
 
+  if (hostnames.length === 0) return null;
+
   return (
     <section className="card">
       <h3 className="card-title">
         Observations over time{" "}
         <span className="font-normal text-muted">
           — AS{meta.probe_asn}, last 30 days, daily counts by outcome
+          {hostnames.length > 1 ? `, summed over ${hostnames.length} hostnames` : ""}
         </span>
       </h3>
       {error && <p className="text-sm badge-fail">✕ chart data failed: {error}</p>}
@@ -540,7 +632,7 @@ export default function HostnameSection({
   chartSince,
   chartUntil,
 }: {
-  group: HostnameGroup;
+  group: TargetGroup;
   meta: MeasurementMeta;
   apiBase: string;
   chartSince: string;
@@ -550,11 +642,23 @@ export default function HostnameSection({
   const resolverASN =
     group.observations.find((o) => o.resolver_asn != null)?.resolver_asn ?? null;
 
+  const title = group.targetId ?? group.key;
+  // Hostname list is redundant when it just repeats the section title
+  const hostnamesLabel =
+    group.hostnames.length > 0 && !(group.hostnames.length === 1 && group.hostnames[0] === title)
+      ? group.hostnames.join(", ")
+      : null;
+
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">
-        <span className="font-mono">{group.hostname}</span>{" "}
+        <span className="font-mono">{title}</span>{" "}
         <span className="text-sm font-normal text-muted">
+          {hostnamesLabel && (
+            <>
+              <span className="font-mono">{hostnamesLabel}</span> ·{" "}
+            </>
+          )}
           {group.observations.length} observation
           {group.observations.length === 1 ? "" : "s"}
         </span>
@@ -563,7 +667,7 @@ export default function HostnameSection({
       <EndpointsSection group={group} />
       <StandaloneHttpSection group={group} />
       <FailurePanel
-        hostname={group.hostname}
+        hostnames={group.hostnames}
         meta={meta}
         apiBase={apiBase}
         resolverASN={resolverASN}

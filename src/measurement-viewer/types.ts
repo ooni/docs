@@ -29,6 +29,7 @@ export interface WebObservation {
   resolver_as_org_name: string;
 
   observation_idx: number;
+  target_id: string | null;
   hostname: string | null;
   transaction_id: number | null;
 

@@ -4,8 +4,8 @@ import {
   fetchMeasurementMeta,
   fetchObservations,
 } from "./api";
-import { chartWindow, ctrlWindow, groupByHostname } from "./derive";
-import type { HostnameGroup } from "./derive";
+import { chartWindow, ctrlWindow, groupByTarget } from "./derive";
+import type { TargetGroup } from "./derive";
 import HostnameSection from "./HostnameSection";
 import type { MeasurementMeta } from "./types";
 import "./measurement-viewer.css";
@@ -14,7 +14,7 @@ const EXAMPLE_UID = "20260816193530.814074_ES_webconnectivity_b83fb9e51ea5bfde";
 
 interface Loaded {
   meta: MeasurementMeta;
-  groups: HostnameGroup[];
+  groups: TargetGroup[];
   observationCount: number;
 }
 
@@ -75,7 +75,7 @@ export default function MeasurementViewer() {
         phase: "loaded",
         data: {
           meta,
-          groups: groupByHostname(observations, ctrl),
+          groups: groupByTarget(observations, ctrl),
           observationCount: observations.length,
         },
       });
@@ -232,14 +232,14 @@ function ViewerBody({ data, apiBase }: { data: Loaded; apiBase: string }) {
         </dl>
         <p className="text-xs text-muted mt-3">
           {data.observationCount} observation{data.observationCount === 1 ? "" : "s"}{" "}
-          across {groups.length} hostname{groups.length === 1 ? "" : "s"} · report{" "}
+          across {groups.length} target{groups.length === 1 ? "" : "s"} · report{" "}
           <span className="font-mono">{meta.report_id}</span>
         </p>
       </section>
 
       {groups.map((g) => (
         <HostnameSection
-          key={g.hostname}
+          key={g.key}
           group={g}
           meta={meta}
           apiBase={apiBase}
