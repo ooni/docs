@@ -69,7 +69,7 @@ export async function fetchCtrlGroundTruth(
   const q = new URLSearchParams({ since, until });
   for (const h of hostnames) q.append("hostname", h);
   const data = await getJSON<{ results: CtrlGroundTruthEntry[] }>(
-    url(apiBase, "/v1/aggregation/observations/ctrl_ground_truth?" + q)
+    url(apiBase, "/v1/aggregation/observations/ctrl?" + q)
   );
   return data.results;
 }
