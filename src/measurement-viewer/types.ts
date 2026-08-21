@@ -4,6 +4,7 @@ export interface MeasurementMeta {
   measurement_uid: string;
   report_id: string;
   test_name: string;
+  test_version: string | null;
   test_start_time: string;
   probe_asn: number;
   probe_cc: string;

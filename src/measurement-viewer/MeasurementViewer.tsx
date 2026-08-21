@@ -65,6 +65,7 @@ export default function MeasurementViewer() {
       const hostnames = [
         ...new Set(observations.map((o) => o.hostname).filter((h): h is string => !!h)),
       ];
+      meta.test_version = observations[0].test_version;
       const win = ctrlWindow(trimmed, meta.measurement_start_time);
       const ctrl =
         hostnames.length > 0
@@ -196,7 +197,7 @@ function ViewerBody({ data, apiBase }: { data: Loaded; apiBase: string }) {
       <section className="card">
         <h2 className="card-title">Measurement</h2>
         <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
-          <MetaItem label="Test" value={meta.test_name} />
+          <MetaItem label="Test" value={`${meta.test_name} · ${meta.test_version}`} />
           <MetaItem
             label="Probe"
             value={`${meta.probe_cc} · AS${meta.probe_asn}`}
