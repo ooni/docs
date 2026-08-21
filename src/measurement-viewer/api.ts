@@ -1,6 +1,7 @@
 import type {
   AggregationEntry,
   CtrlGroundTruthEntry,
+  MeasurementAnalysis,
   MeasurementMeta,
   WebObservation,
 } from "./types";
@@ -58,6 +59,21 @@ export async function fetchObservations(
     if (data.results.length < limit) break;
   }
   return rows.sort((a, b) => a.observation_idx - b.observation_idx);
+}
+
+// The analysis is computed asynchronously after a measurement lands, so it may
+// legitimately not exist yet — the caller gets null rather than an error.
+export async function fetchAnalysis(
+  apiBase: string,
+  measurementUid: string
+): Promise<MeasurementAnalysis | null> {
+  const q = new URLSearchParams({ measurement_uid: measurementUid });
+  const data = await getJSON<{ results: MeasurementAnalysis[] }>(
+    url(apiBase, "/v1/analysis?" + q)
+  );
+  return (
+    data.results.find((r) => r.measurement_uid === measurementUid) ?? null
+  );
 }
 
 export async function fetchCtrlGroundTruth(

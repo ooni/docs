@@ -102,3 +102,39 @@ export interface AggregationEntry {
   hostname?: string | null;
   probe_asn?: number | null;
 }
+
+// One row of /api/v1/analysis: the per-measurement blocking scores derived by
+// the analysis engine. The dns_/tcp_/tls_ triples are scores in [0, 1] that
+// sum to roughly 1 per layer — blocked (interference), down (the target itself
+// is unreachable) and ok.
+export interface MeasurementAnalysis {
+  measurement_uid: string;
+  measurement_start_time: string;
+  network_type: string | null;
+  probe_asn: number;
+  probe_cc: string;
+  probe_as_org_name: string | null;
+  resolver_asn: number | null;
+  resolver_as_cc: string | null;
+  domain: string | null;
+  input: string | null;
+  test_name: string;
+
+  top_probe_analysis: string | null;
+  top_dns_failure: string | null;
+  top_tcp_failure: string | null;
+  top_tls_failure: string | null;
+  top_dns_rule_id: string | null;
+  top_tcp_rule_id: string | null;
+  top_tls_rule_id: string | null;
+
+  dns_blocked: number;
+  dns_down: number;
+  dns_ok: number;
+  tcp_blocked: number;
+  tcp_down: number;
+  tcp_ok: number;
+  tls_blocked: number;
+  tls_down: number;
+  tls_ok: number;
+}

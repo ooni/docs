@@ -252,3 +252,10 @@
   pointer-events: none;
   max-width: 300px;
 }
+
+/* the analysis + fastpath verdicts, set off from the metadata above */
+.verdict-section {
+  border-top: 1px solid var(--grid);
+  margin-top: 0.875rem;
+  padding-top: 0.75rem;
+}

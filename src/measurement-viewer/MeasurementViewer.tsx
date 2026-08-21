@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  fetchAnalysis,
   fetchCtrlGroundTruth,
   fetchMeasurementMeta,
   fetchObservations,
@@ -7,7 +8,8 @@ import {
 import { chartWindow, ctrlWindow, groupByTarget } from "./derive";
 import type { TargetGroup } from "./derive";
 import HostnameSection from "./HostnameSection";
-import type { MeasurementMeta } from "./types";
+import type { MeasurementAnalysis, MeasurementMeta } from "./types";
+import VerdictSection from "./VerdictSection";
 import "./measurement-viewer.css";
 
 const EXAMPLE_UID = "20260816193530.814074_ES_webconnectivity_b83fb9e51ea5bfde";
@@ -16,6 +18,7 @@ interface Loaded {
   meta: MeasurementMeta;
   groups: TargetGroup[];
   observationCount: number;
+  analysis: MeasurementAnalysis | null;
 }
 
 type State =
@@ -67,10 +70,14 @@ export default function MeasurementViewer() {
       ];
       meta.test_version = observations[0].test_version;
       const win = ctrlWindow(trimmed, meta.measurement_start_time);
-      const ctrl =
+      // The analysis may not have been computed yet (or the deployment may not
+      // serve /v1/analysis at all): a failure there just hides the panel.
+      const [ctrl, analysis] = await Promise.all([
         hostnames.length > 0
-          ? await fetchCtrlGroundTruth(base, hostnames, win.since, win.until)
-          : [];
+          ? fetchCtrlGroundTruth(base, hostnames, win.since, win.until)
+          : Promise.resolve([]),
+        fetchAnalysis(base, meta.measurement_uid).catch(() => null),
+      ]);
 
       setState({
         phase: "loaded",
@@ -78,6 +85,7 @@ export default function MeasurementViewer() {
           meta,
           groups: groupByTarget(observations, ctrl),
           observationCount: observations.length,
+          analysis,
         },
       });
     } catch (e) {
@@ -190,7 +198,7 @@ function MetaItem({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 function ViewerBody({ data, apiBase }: { data: Loaded; apiBase: string }) {
-  const { meta, groups } = data;
+  const { meta, groups, analysis } = data;
   const chart = chartWindow(meta.measurement_uid, meta.measurement_start_time);
   return (
     <div className="space-y-8">
@@ -210,20 +218,6 @@ function ViewerBody({ data, apiBase }: { data: Loaded; apiBase: string }) {
               </span>
             }
           />
-          <MetaItem
-            label="Verdict"
-            value={
-              meta.confirmed ? (
-                <span className="badge-fail">✕ confirmed blocked</span>
-              ) : meta.anomaly ? (
-                <span className="badge-warn">! anomaly</span>
-              ) : meta.failure ? (
-                <span className="text-muted">measurement failure</span>
-              ) : (
-                <span className="badge-ok">✓ ok</span>
-              )
-            }
-          />
           {meta.input && (
             <div className="col-span-2 md:col-span-4">
               <dt className="text-xs uppercase tracking-wide text-muted">Input</dt>
@@ -231,6 +225,9 @@ function ViewerBody({ data, apiBase }: { data: Loaded; apiBase: string }) {
             </div>
           )}
         </dl>
+
+        <VerdictSection meta={meta} analysis={analysis} />
+
         <p className="text-xs text-muted mt-3">
           {data.observationCount} observation{data.observationCount === 1 ? "" : "s"}{" "}
           across {groups.length} target{groups.length === 1 ? "" : "s"} · report{" "}
