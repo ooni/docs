@@ -1,0 +1,254 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Theme tokens. Light values on the root scope, dark values under
+ * prefers-color-scheme. Chart series colors are the validated reference
+ * categorical palette, slots 1-6 in documented (CVD-safe) adjacency order.
+ */
+.mv-root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --grid: #e1e0d9;
+  --baseline: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.1);
+  --accent: #2a78d6;
+  --status-good: #006300;
+  --status-warn: #a36b00;
+  --status-critical: #d03b3b;
+
+  --series-none: #c9c8c0; /* neutral: observations without a failure */
+  --series-dns-isp: #2a78d6; /* blue */
+  --series-dns-other: #eb6834; /* orange */
+  --series-tcp: #1baf7a; /* aqua */
+  --series-tls: #eda100; /* yellow */
+  --series-https: #e87ba4; /* magenta */
+  --series-http: #008300; /* green */
+
+  background: var(--page);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  .mv-root {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255, 255, 255, 0.1);
+    --accent: #3987e5;
+    --status-good: #0ca30c;
+    --status-warn: #fab219;
+    --status-critical: #e66767;
+
+    --series-none: #45443f;
+    --series-dns-isp: #3987e5;
+    --series-dns-other: #d95926;
+    --series-tcp: #199e70;
+    --series-tls: #c98500;
+    --series-https: #d55181;
+    --series-http: #008300;
+  }
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+.text-muted {
+  color: var(--text-muted);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.card-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.ctrl-panel {
+  border-left: 1px solid var(--grid);
+  padding-left: 1rem;
+}
+@media (max-width: 767px) {
+  .ctrl-panel {
+    border-left: none;
+    border-top: 1px solid var(--grid);
+    padding-left: 0;
+    padding-top: 0.75rem;
+  }
+}
+
+.ctrl-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.data-table th {
+  text-align: left;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 0.25rem 0.75rem 0.25rem 0;
+  border-bottom: 1px solid var(--grid);
+}
+.data-table th.text-right {
+  text-align: right;
+}
+.data-table td {
+  padding: 0.375rem 0.75rem 0.375rem 0;
+  border-bottom: 1px solid var(--grid);
+  vertical-align: top;
+}
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* status is never color alone: each badge pairs the color with an icon */
+.badge-ok {
+  color: var(--status-good);
+  font-weight: 500;
+}
+.badge-fail {
+  color: var(--status-critical);
+  font-weight: 500;
+}
+.badge-warn {
+  color: var(--status-warn);
+  font-weight: 500;
+}
+
+.chip {
+  display: inline-block;
+  font-size: 0.65rem;
+  line-height: 1.1;
+  padding: 0.1rem 0.375rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-secondary);
+}
+.chip-warn {
+  color: var(--status-warn);
+  border-color: currentColor;
+}
+.chip-ok {
+  color: var(--status-good);
+  border-color: currentColor;
+}
+.chip-bad {
+  color: var(--status-critical);
+  border-color: currentColor;
+}
+
+/* control-side IP the probe also resolved */
+.ctrl-ip-common {
+  font-weight: 500;
+}
+
+.mv-input {
+  background: var(--surface);
+  border: 1px solid var(--baseline);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  color: var(--text-primary);
+}
+.mv-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+.mv-input::placeholder {
+  color: var(--text-muted);
+}
+
+.mv-button {
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 0.45rem 1rem;
+}
+.mv-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.link {
+  color: var(--accent);
+  text-decoration: underline;
+  word-break: break-all;
+  text-align: left;
+}
+
+/* chart chrome */
+.chart-surface {
+  background: var(--surface);
+}
+.chart-grid {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+.chart-baseline {
+  stroke: var(--baseline);
+  stroke-width: 1;
+}
+.chart-tick {
+  fill: var(--text-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.chart-empty {
+  fill: var(--text-muted);
+  font-size: 12px;
+}
+.chart-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.chart-linekey {
+  display: inline-block;
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+  flex: none;
+}
+.chart-tooltip {
+  position: absolute;
+  z-index: 10;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem 0.625rem;
+  font-size: 0.72rem;
+  pointer-events: none;
+  max-width: 300px;
+}
