@@ -68,7 +68,7 @@ export default function MeasurementViewer() {
       const hostnames = [
         ...new Set(observations.map((o) => o.hostname).filter((h): h is string => !!h)),
       ];
-      meta.test_version = observations[0].test_version;
+      meta.test_version = observations[0].test_version.toString();
       const win = ctrlWindow(trimmed, meta.measurement_start_time);
       // The analysis may not have been computed yet (or the deployment may not
       // serve /v1/analysis at all): a failure there just hides the panel.
