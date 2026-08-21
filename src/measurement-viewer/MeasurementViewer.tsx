@@ -31,7 +31,7 @@ const readQuery = (key: string): string =>
 
 export default function MeasurementViewer() {
   const [uidInput, setUidInput] = useState("");
-  const [apiBaseInput, setApiBaseInput] = useState("");
+  const [apiBaseInput, setApiBaseInput] = useState("https://api.ooni.org");
   const [state, setState] = useState<State>({ phase: "idle" });
   const [loadedFor, setLoadedFor] = useState<{ uid: string; apiBase: string } | null>(
     null
