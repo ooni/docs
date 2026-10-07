@@ -37,7 +37,7 @@ Base URL: https://api.ooni.io
 Examples:
 
 - Websites in one country, per day:
-  `/api/v1/aggregation?probe_cc=IR&test_name=web_connectivity&since=2026-09-01&until=2026-09-28&axis_x=measurement_start_day&axis_y=domain&time_grain=day`
+  `/api/v1/aggregation?probe_cc=IR&test_name=web_connectivity&since=2026-09-21&until=2026-09-28&axis_x=measurement_start_day&axis_y=domain&time_grain=day`
 - One app across all countries, per day:
   `/api/v1/aggregation?test_name=telegram&since=2026-09-26&until=2026-09-28&axis_x=measurement_start_day&axis_y=probe_cc&time_grain=day`
 
