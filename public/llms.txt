@@ -8,7 +8,7 @@ Base URL: https://api.ooni.io
 
 ## Acceptable use
 
-- Most API endpoints are for one-off fetches, but not for live queries issued by users of a third-party application.
+- API endpoints are meant for one-off fetches, not for live queries made on behalf of a third-party application's users.
 - Bulk ingestion is not allowed. Reach out on https://slack.ooni.org or at contact@ooni.org to discuss receiving a database dump.
 - Periodic fetching must stay under 1 request per second and 1000 requests per day, and cover no more than 1 year of data.
 - For in-depth analysis, use the raw data in S3.
