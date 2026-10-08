@@ -13,7 +13,8 @@ export interface StoredChangepoint {
   s_pos: number;
   h: number;
   state: "BLOCK" | "OK";
-  run_parameters: string; // JSON-encoded detector parameters
+  // detector settings the job ran with (h_threshold is h)
+  run_parameters: Record<string, number | boolean>;
   created_at: string;
 }
 
@@ -44,9 +45,8 @@ export const TIME_FIELDS = [
 ] as const;
 export type TimeField = (typeof TIME_FIELDS)[number];
 
+// The labelling queue: every stored changepoint with ts_hour in the range
 export interface ChangepointQuery {
-  probe_cc: string;
-  domain: string;
   since: string; // YYYY-MM-DD
   until: string; // YYYY-MM-DD, inclusive
 }

@@ -7,59 +7,55 @@ import type {
   StoredChangepoint,
 } from "./types";
 
-/**
- * Everything the labeler reads and writes. The real implementation (stored
- * changepoints and changepoint_label in ClickHouse, behind an API that is
- * still being built) only has to provide these three calls.
- */
-export interface LabelApi {
-  // true while labels live in this browser rather than in the database
-  readonly mock: boolean;
-  listChangepoints(q: ChangepointQuery, signal?: AbortSignal): Promise<StoredChangepoint[]>;
-  // every label of the given changepoints, history included
-  listLabels(changepointIds: string[], signal?: AbortSignal): Promise<ChangepointLabel[]>;
-  createLabel(label: NewChangepointLabel): Promise<ChangepointLabel>;
+const join = (base: string, path: string): string => base.replace(/\/$/, "") + path;
+
+async function request<T>(url: string, init?: RequestInit): Promise<T> {
+  const r = await fetch(url, init);
+  if (!r.ok) {
+    const body = await r.json().catch(() => null);
+    const detail = Array.isArray(body?.detail)
+      ? body.detail.map((d: { msg: string }) => d.msg).join("; ")
+      : body?.detail;
+    throw new Error(detail || `${r.status} ${r.statusText}`);
+  }
+  return r.json();
 }
 
-// /changepoints is slow (seconds to tens of seconds) and both the mock queue
-// and the evidence view need it for the same query, so runs are shared
-const runs = new Map<string, Promise<ChangepointResponse>>();
-export function detectCached(
+/**
+ * Every changepoint the hourly detector job stored with ts_hour inside the
+ * range, newest first, from the changepoint API's /stored_changepoints
+ */
+export async function listStoredChangepoints(
   changepointApi: string,
-  q: ChangepointQuery
-): Promise<ChangepointResponse> {
-  const key = JSON.stringify([changepointApi, q]);
-  let run = runs.get(key);
-  if (!run) {
-    run = fetchChangepoints(changepointApi, {
-      probe_cc: q.probe_cc,
-      domain: q.domain,
+  q: ChangepointQuery,
+  signal?: AbortSignal
+): Promise<StoredChangepoint[]> {
+  const limit = 1000;
+  const out: StoredChangepoint[] = [];
+  for (let offset = 0; ; offset += limit) {
+    const params = new URLSearchParams({
       start_date: q.since,
       end_date: q.until,
+      limit: String(limit),
+      offset: String(offset),
     });
-    run.catch(() => runs.delete(key));
-    runs.set(key, run);
+    const page = await request<{ changepoints: StoredChangepoint[] }>(
+      join(changepointApi, "/stored_changepoints?" + params),
+      { signal }
+    );
+    out.push(...page.changepoints);
+    if (page.changepoints.length < limit) return out;
   }
-  return run;
 }
 
-// ------------------------------------------------------------------ mock
+// ------------------------------------------------------------------ labels
 
-const STORAGE_KEY = "cp-labeler:labels:v1";
+// The API stores labels (POST /changepoint_labels) but cannot list them yet,
+// so the labels made from this browser are kept here too, to show what is
+// already done in the queue and in a changepoint's history
+const STORAGE_KEY = "cp-labeler:posted-labels:v1";
 
-// A stable UUID for a changepoint, so labels made against the mock survive
-// reloads: SHA-1 of the fields that identify it, laid out as a UUID
-async function stableUuid(parts: (string | number)[]): Promise<string> {
-  const bytes = new Uint8Array(
-    await crypto.subtle.digest("SHA-1", new TextEncoder().encode(parts.join("|")))
-  );
-  const hex = [...bytes.slice(0, 16)].map((b) => b.toString(16).padStart(2, "0")).join("");
-  // version 5 and the RFC 4122 variant bits, as a name-based UUID would have
-  const variant = ((parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
-}
-
-function readLabels(): ChangepointLabel[] {
+function readPosted(): ChangepointLabel[] {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
   } catch {
@@ -67,68 +63,26 @@ function readLabels(): ChangepointLabel[] {
   }
 }
 
-function writeLabels(labels: ChangepointLabel[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(labels));
+export function postedLabels(changepointIds: string[]): ChangepointLabel[] {
+  const ids = new Set(changepointIds);
+  return readPosted().filter((l) => ids.has(l.changepoint_id));
 }
 
-export function exportMockLabels(): ChangepointLabel[] {
-  return readLabels();
-}
-
-/**
- * Stand-in until the label API exists. Changepoints come from the changepoint
- * API's on-the-fly /changepoints, reshaped into event_detector_v2_changepoints
- * rows; labels are kept in localStorage.
- */
-export function createMockLabelApi(changepointApi: string): LabelApi {
-  return {
-    mock: true,
-
-    async listChangepoints(q) {
-      const resp = await detectCached(changepointApi, q);
-      const runParameters = JSON.stringify(resp.query);
-      return Promise.all(
-        resp.changepoints.map(async (cp) => ({
-          uuid: await stableUuid([
-            cp.domain,
-            cp.probe_cc,
-            cp.probe_asn,
-            cp.resolver_asn,
-            cp.layer,
-            cp.ts_hour,
-            cp.state,
-          ]),
-          domain: cp.domain,
-          probe_cc: cp.probe_cc,
-          probe_asn: cp.probe_asn,
-          resolver_asn: cp.resolver_asn,
-          layer: cp.layer,
-          ts_hour: cp.ts_hour,
-          s_neg: cp.s_neg,
-          s_pos: cp.s_pos,
-          h: cp.h,
-          state: cp.state,
-          run_parameters: runParameters,
-          created_at: cp.ts_hour,
-        }))
-      );
-    },
-
-    async listLabels(changepointIds) {
-      const ids = new Set(changepointIds);
-      return readLabels().filter((l) => ids.has(l.changepoint_id));
-    },
-
-    async createLabel(label) {
-      const row: ChangepointLabel = {
-        ...label,
-        id: crypto.randomUUID(),
-        created_at: new Date().toISOString(),
-      };
-      writeLabels([...readLabels(), row]);
-      return row;
-    },
-  };
+export async function createLabel(
+  changepointApi: string,
+  label: NewChangepointLabel
+): Promise<ChangepointLabel> {
+  const row = await request<ChangepointLabel>(join(changepointApi, "/changepoint_labels"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(label),
+  });
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...readPosted(), row]));
+  } catch {
+    /* stored server side regardless; only the local record is lost */
+  }
+  return row;
 }
 
 // The newest label of each changepoint
@@ -139,4 +93,33 @@ export function currentLabels(labels: ChangepointLabel[]): Map<string, Changepoi
     if (!prev || l.created_at > prev.created_at) out.set(l.changepoint_id, l);
   }
   return out;
+}
+
+// ------------------------------------------------------------------ evidence
+
+export interface DetectionScope {
+  probe_cc: string;
+  domain: string;
+  since: string; // YYYY-MM-DD
+  until: string; // YYYY-MM-DD, inclusive
+}
+
+// /changepoints over a country and domain recomputes the detector's view of
+// every network there: it is slow (seconds to tens of seconds) and shared by
+// all the changepoints of that country and domain, so each run is kept
+const runs = new Map<string, Promise<ChangepointResponse>>();
+export function detectCached(changepointApi: string, s: DetectionScope): Promise<ChangepointResponse> {
+  const key = JSON.stringify([changepointApi, s]);
+  let run = runs.get(key);
+  if (!run) {
+    run = fetchChangepoints(changepointApi, {
+      probe_cc: s.probe_cc,
+      domain: s.domain,
+      start_date: s.since,
+      end_date: s.until,
+    });
+    run.catch(() => runs.delete(key));
+    runs.set(key, run);
+  }
+  return run;
 }

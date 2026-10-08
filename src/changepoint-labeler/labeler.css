@@ -7,14 +7,6 @@
   padding: 2rem 1rem;
 }
 
-.mock-banner {
-  border: 1px dashed var(--status-warn);
-  border-left: 6px solid var(--status-warn);
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8rem;
-  background: var(--surface);
-}
-
 .lab-grid {
   display: grid;
   grid-template-columns: 1fr;

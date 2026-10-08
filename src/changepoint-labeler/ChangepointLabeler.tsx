@@ -1,14 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchCountries, fetchDomains, fetchNetworkNames } from "../event-dashboard/api";
+import { fetchCountries, fetchNetworkNames } from "../event-dashboard/api";
 import { readConfig } from "../event-dashboard/config";
 import { isoDay, summarizeAsns } from "../event-dashboard/derive";
 import type { AsnSummary, Window } from "../event-dashboard/derive";
-import DomainInput from "../event-dashboard/DomainInput";
 import type { ChartMark } from "../event-dashboard/HourlyBars";
 import { isoHour } from "../event-dashboard/inspect";
 import Inspector from "../event-dashboard/Inspector";
-import type { Country, DomainEntry } from "../event-dashboard/types";
-import { createMockLabelApi, currentLabels, detectCached, exportMockLabels } from "./labelApi";
+import {
+  createLabel,
+  currentLabels,
+  detectCached,
+  listStoredChangepoints,
+  postedLabels,
+} from "./labelApi";
+import type { DetectionScope } from "./labelApi";
 import LabelForm, { draftFromLabel, emptyDraft, TIME_META, validate } from "./LabelForm";
 import type { Draft } from "./LabelForm";
 import type { ChangepointLabel, ChangepointQuery, StoredChangepoint } from "./types";
@@ -18,6 +23,8 @@ import "./labeler.css";
 
 const AUTHOR_KEY = "cp-labeler:author";
 const DAY_MS = 864e5;
+// History shown around the queue's range when judging a changepoint
+const CONTEXT_DAYS = 7;
 
 type Filter = "unlabeled" | "all";
 
@@ -25,13 +32,14 @@ interface Queue {
   query: ChangepointQuery;
   cps: StoredChangepoint[];
   labels: ChangepointLabel[];
-  asns: AsnSummary[]; // detector context for the evidence view
 }
 
-type Status =
-  | { phase: "idle" }
-  | { phase: "loading"; startedAt: number }
-  | { phase: "error"; message: string };
+type Status = { phase: "idle" } | { phase: "loading" } | { phase: "error"; message: string };
+
+type Evidence =
+  | { state: "loading" }
+  | { state: "error"; message: string }
+  | { state: "ok"; asns: AsnSummary[] };
 
 const readAuthor = () => {
   try {
@@ -41,17 +49,31 @@ const readAuthor = () => {
   }
 };
 
-const windowOf = (q: ChangepointQuery): Window => ({
-  startDate: q.since,
-  endDate: q.until,
-  startMs: Date.parse(q.since + "T00:00:00Z"),
-  endMs: Date.parse(q.until + "T00:00:00Z") + DAY_MS,
+const shiftDay = (d: string, days: number) => isoDay(Date.parse(d + "T00:00:00Z") + days * DAY_MS);
+
+// The window a changepoint is judged over: the queue's range plus a week on
+// each side, never past today
+function scopeOf(cp: StoredChangepoint, q: ChangepointQuery): DetectionScope {
+  const today = isoDay(Date.now());
+  const until = shiftDay(q.until, CONTEXT_DAYS);
+  return {
+    probe_cc: cp.probe_cc,
+    domain: cp.domain,
+    since: shiftDay(q.since, -CONTEXT_DAYS),
+    until: until > today ? today : until,
+  };
+}
+
+const windowOf = (s: DetectionScope): Window => ({
+  startDate: s.since,
+  endDate: s.until,
+  startMs: Date.parse(s.since + "T00:00:00Z"),
+  endMs: Date.parse(s.until + "T00:00:00Z") + DAY_MS,
 });
 
 export default function ChangepointLabeler() {
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const config = useMemo(() => readConfig(params), [params]);
-  const api = useMemo(() => createMockLabelApi(config.changepointApi), [config.changepointApi]);
 
   const [author, setAuthor] = useState(readAuthor);
   useEffect(() => {
@@ -63,17 +85,16 @@ export default function ChangepointLabeler() {
   }, [author]);
 
   const [query, setQuery] = useState<ChangepointQuery>(() => ({
-    probe_cc: (params.get("probe_cc") ?? "").toUpperCase(),
-    domain: params.get("domain") ?? "",
-    since: params.get("since") ?? isoDay(Date.now() - 22 * DAY_MS),
-    until: params.get("until") ?? isoDay(Date.now() - DAY_MS),
+    since: params.get("since") ?? isoDay(Date.now() - 7 * DAY_MS),
+    until: params.get("until") ?? isoDay(Date.now()),
   }));
-  const [countries, setCountries] = useState<Country[]>([]);
-  const [domains, setDomains] = useState<DomainEntry[]>([]);
+  const [countryNames, setCountryNames] = useState<Map<string, string>>(new Map());
   const [names, setNames] = useState<Map<number, string>>(new Map());
   useEffect(() => {
-    fetchCountries(config.ooniApi).then(setCountries, () => {});
-    fetchDomains(config.ooniApi).then(setDomains, () => {});
+    fetchCountries(config.ooniApi).then(
+      (cs) => setCountryNames(new Map(cs.map((c) => [c.alpha_2, c.name]))),
+      () => {}
+    );
     fetchNetworkNames(config.ooniApi).then(setNames, () => {});
   }, [config.ooniApi]);
 
@@ -81,6 +102,8 @@ export default function ChangepointLabeler() {
   const [status, setStatus] = useState<Status>({ phase: "idle" });
   const [currentId, setCurrentId] = useState<string | null>(params.get("cp"));
   const [filter, setFilter] = useState<Filter>("unlabeled");
+  const [ccFilter, setCcFilter] = useState("");
+  const [domainFilter, setDomainFilter] = useState("");
   const [drafts, setDrafts] = useState<Map<string, Draft>>(new Map());
   const [selectedHour, setSelectedHour] = useState<number | null>(null);
   const [jump, setJump] = useState<{ ms: number; n: number } | null>(null);
@@ -88,19 +111,15 @@ export default function ChangepointLabeler() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const complete = !!query.probe_cc && !!query.domain && query.since <= query.until;
+  const complete = !!query.since && !!query.until && query.since <= query.until;
 
   const load = useCallback(
     async (q: ChangepointQuery) => {
-      setStatus({ phase: "loading", startedAt: Date.now() });
+      setStatus({ phase: "loading" });
       try {
-        const [cps, resp] = await Promise.all([
-          api.listChangepoints(q),
-          detectCached(config.changepointApi, q),
-        ]);
-        cps.sort((a, b) => a.ts_hour.localeCompare(b.ts_hour) || a.probe_asn - b.probe_asn);
-        const labels = await api.listLabels(cps.map((c) => c.uuid));
-        setQueue({ query: q, cps, labels, asns: summarizeAsns(resp) });
+        const cps = await listStoredChangepoints(config.changepointApi, q);
+        const labels = postedLabels(cps.map((c) => c.uuid));
+        setQueue({ query: q, cps, labels });
         setStatus({ phase: "idle" });
         const labelled = currentLabels(labels);
         setCurrentId((id) =>
@@ -112,20 +131,18 @@ export default function ChangepointLabeler() {
         setStatus({ phase: "error", message: String((e as Error).message ?? e) });
       }
     },
-    [api, config.changepointApi]
+    [config.changepointApi]
   );
 
-  // A shared link with a full query loads straight away
+  // Opening the page loads its range straight away
   useEffect(() => {
-    if (params.has("probe_cc") && params.has("domain") && complete) load(query);
+    if (complete) load(query);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!queue) return;
     const q = new URLSearchParams(window.location.search);
-    q.set("probe_cc", queue.query.probe_cc);
-    q.set("domain", queue.query.domain);
     q.set("since", queue.query.since);
     q.set("until", queue.query.until);
     if (currentId) q.set("cp", currentId);
@@ -135,11 +152,59 @@ export default function ChangepointLabeler() {
 
   const labelled = useMemo(() => currentLabels(queue?.labels ?? []), [queue]);
   const cp = queue?.cps.find((c) => c.uuid === currentId) ?? null;
+  const countries = useMemo(() => [...new Set((queue?.cps ?? []).map((c) => c.probe_cc))].sort(), [queue]);
+  const domains = useMemo(
+    () =>
+      [...new Set((queue?.cps ?? []).filter((c) => !ccFilter || c.probe_cc === ccFilter).map((c) => c.domain))].sort(),
+    [queue, ccFilter]
+  );
   const visible = useMemo(
-    () => (queue?.cps ?? []).filter((c) => filter === "all" || !labelled.has(c.uuid) || c.uuid === currentId),
-    [queue, filter, labelled, currentId]
+    () =>
+      (queue?.cps ?? []).filter(
+        (c) =>
+          c.uuid === currentId ||
+          ((filter === "all" || !labelled.has(c.uuid)) &&
+            (!ccFilter || c.probe_cc === ccFilter) &&
+            (!domainFilter || c.domain === domainFilter))
+      ),
+    [queue, filter, labelled, currentId, ccFilter, domainFilter]
   );
 
+  // ------------------------------------------------------------ evidence
+  // The detector's view of the changepoint's country and domain, recomputed
+  // over the window around the queue and shared by its changepoints there
+  const scope = useMemo(() => (cp && queue ? scopeOf(cp, queue.query) : null), [cp, queue]);
+  const scopeKey = scope ? JSON.stringify(scope) : "";
+  const win = useMemo(() => (scope ? windowOf(scope) : null), [scopeKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [evidence, setEvidence] = useState<Evidence>({ state: "loading" });
+  useEffect(() => {
+    if (!scope) return;
+    let live = true;
+    setEvidence({ state: "loading" });
+    detectCached(config.changepointApi, scope).then(
+      (resp) => live && setEvidence({ state: "ok", asns: summarizeAsns(resp) }),
+      (e) => live && setEvidence({ state: "error", message: String(e?.message ?? e) })
+    );
+    return () => {
+      live = false;
+    };
+  }, [scopeKey, config.changepointApi]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const asn: AsnSummary | null = useMemo(() => {
+    if (!cp || evidence.state !== "ok") return null;
+    return (
+      evidence.asns.find((a) => a.asn === cp.probe_asn) ?? {
+        asn: cp.probe_asn,
+        nMeasurements: 0,
+        events: [],
+        tracks: [],
+        blockedAtEnd: new Set(),
+        decidedLayers: new Set(),
+      }
+    );
+  }, [cp, evidence]);
+
+  // ------------------------------------------------------------ drafts
   // Opening a changepoint: its draft (or its current label as a start), the
   // evidence view centred on it, on the resolver it was detected for
   const baseDraft = (id: string): Draft => {
@@ -180,7 +245,7 @@ export default function ChangepointLabeler() {
     setSaveError(null);
     try {
       const iso = (ms: number | null) => (ms === null ? null : new Date(ms).toISOString());
-      const row = await api.createLabel({
+      const row = await createLabel(config.changepointApi, {
         changepoint_id: cp.uuid,
         author: author.trim(),
         verdict: draft.verdict!,
@@ -197,11 +262,12 @@ export default function ChangepointLabeler() {
         n.delete(cp.uuid);
         return n;
       });
-      // on to the next changepoint still without a label
+      // on to the next changepoint still without a label, in the same view
       const after = currentLabels(labels);
+      const todo = (c: StoredChangepoint) =>
+        !after.has(c.uuid) && (!ccFilter || c.probe_cc === ccFilter) && (!domainFilter || c.domain === domainFilter);
       const i = queue.cps.findIndex((c) => c.uuid === cp.uuid);
-      const next =
-        queue.cps.slice(i + 1).find((c) => !after.has(c.uuid)) ?? queue.cps.find((c) => !after.has(c.uuid));
+      const next = queue.cps.slice(i + 1).find(todo) ?? queue.cps.find(todo);
       if (next) setCurrentId(next.uuid);
     } catch (e) {
       setSaveError(String((e as Error).message ?? e));
@@ -210,29 +276,15 @@ export default function ChangepointLabeler() {
     }
   };
 
-  const asn: AsnSummary | null = useMemo(() => {
-    if (!cp || !queue) return null;
-    return (
-      queue.asns.find((a) => a.asn === cp.probe_asn) ?? {
-        asn: cp.probe_asn,
-        nMeasurements: 0,
-        events: [],
-        tracks: [],
-        blockedAtEnd: new Set(),
-        decidedLayers: new Set(),
-      }
-    );
-  }, [cp, queue]);
-
   const labelMarks: ChartMark[] = TIME_FIELDS.flatMap((f) =>
-    draft.times[f] !== null ? [{ ms: draft.times[f] as number, label: TIME_META[f].label.toUpperCase(), tone: "label" as const }] : []
+    draft.times[f] !== null
+      ? [{ ms: draft.times[f] as number, label: TIME_META[f].label.toUpperCase(), tone: "label" as const }]
+      : []
   );
-
-  // stable across renders: the inspector re-centres whenever its window changes
-  const win = useMemo(() => (queue ? windowOf(queue.query) : null), [queue?.query]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const nLabelled = queue ? queue.cps.filter((c) => labelled.has(c.uuid)).length : 0;
   const onSelectedHour = useCallback((h: number | null) => setSelectedHour(h), []);
+  const country = (cc: string) => countryNames.get(cc) ?? cc;
 
   return (
     <div className="ed-root min-h-screen">
@@ -241,8 +293,8 @@ export default function ChangepointLabeler() {
           <div>
             <h1 className="text-3xl font-black uppercase tracking-tight">Changepoint labeler</h1>
             <p className="text-sm text-muted mt-1">
-              Check each detected change against the measurements and record what the network was really
-              doing.
+              Check each change the detector stored against the measurements and record what the network
+              was really doing.
             </p>
           </div>
           <label className="text-xs">
@@ -256,16 +308,6 @@ export default function ChangepointLabeler() {
           </label>
         </header>
 
-        {api.mock && (
-          <div className="mock-banner mb-4">
-            <strong>Mock label store.</strong> Changepoints come from the changepoint API's on-the-fly
-            detection and labels are kept in this browser until the label API is ready.{" "}
-            <button type="button" className="link" onClick={() => downloadJson(exportMockLabels())}>
-              Export labels (JSON)
-            </button>
-          </div>
-        )}
-
         <form
           className="card mb-4"
           onSubmit={(e) => {
@@ -273,26 +315,7 @@ export default function ChangepointLabeler() {
             if (complete) load(query);
           }}
         >
-          <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_auto_auto_auto] gap-3 items-end">
-            <label>
-              <span className="ed-label">Country</span>
-              <select
-                className="ed-input w-full text-sm"
-                value={query.probe_cc}
-                onChange={(e) => setQuery({ ...query, probe_cc: e.target.value })}
-              >
-                <option value="">{countries.length ? "Pick a country…" : "loading countries…"}</option>
-                {countries.map((c) => (
-                  <option key={c.alpha_2} value={c.alpha_2}>
-                    {c.name} ({c.alpha_2})
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div>
-              <span className="ed-label">Domain</span>
-              <DomainInput domains={domains} value={query.domain} onCommit={(domain) => setQuery({ ...query, domain })} />
-            </div>
+          <div className="flex flex-wrap gap-3 items-end">
             <label>
               <span className="ed-label">From</span>
               <input
@@ -315,12 +338,13 @@ export default function ChangepointLabeler() {
             <button type="submit" className="ed-button" disabled={!complete || status.phase === "loading"}>
               {status.phase === "loading" ? "Loading…" : "Load changepoints"}
             </button>
+            <span className="text-xs text-muted">Every changepoint the detector stored in the range (UTC).</span>
           </div>
         </form>
 
         {status.phase === "loading" && (
           <div className="card progress-card mb-4">
-            <p className="text-sm mb-2">Loading changepoints and the detector's view of every network…</p>
+            <p className="text-sm mb-2">Loading stored changepoints…</p>
             <div className="progress-track">
               <div className="progress-sweep" />
             </div>
@@ -332,7 +356,9 @@ export default function ChangepointLabeler() {
           </div>
         )}
         {queue && queue.cps.length === 0 && (
-          <p className="text-sm text-muted">No changepoints for this country, domain and period.</p>
+          <p className="text-sm text-muted">
+            No changepoints stored between {queue.query.since} and {queue.query.until}.
+          </p>
         )}
 
         {queue && queue.cps.length > 0 && (
@@ -363,6 +389,37 @@ export default function ChangepointLabeler() {
                   All
                 </button>
               </div>
+              <div className="grid grid-cols-2 gap-1 mb-2">
+                <select
+                  className="ed-input text-xs"
+                  value={ccFilter}
+                  onChange={(e) => {
+                    setCcFilter(e.target.value);
+                    setDomainFilter("");
+                  }}
+                  aria-label="Country"
+                >
+                  <option value="">all countries</option>
+                  {countries.map((cc) => (
+                    <option key={cc} value={cc}>
+                      {cc} {country(cc)}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="ed-input text-xs"
+                  value={domainFilter}
+                  onChange={(e) => setDomainFilter(e.target.value)}
+                  aria-label="Domain"
+                >
+                  <option value="">all domains</option>
+                  {domains.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <ol className="lab-list">
                 {visible.map((c) => {
                   const l = labelled.get(c.uuid);
@@ -380,11 +437,12 @@ export default function ChangepointLabeler() {
                           </span>
                         </span>
                         <span className="block truncate text-xs">
-                          {names.get(c.probe_asn) ?? `AS${c.probe_asn}`}{" "}
-                          <span className="text-muted">AS{c.probe_asn}</span>
+                          <strong>{c.probe_cc}</strong> <span className="font-mono">{c.domain}</span>
                         </span>
                         <span className="flex items-baseline justify-between gap-1 text-xs text-muted">
-                          <span className="truncate">via AS{c.resolver_asn}</span>
+                          <span className="truncate">
+                            {names.get(c.probe_asn) ?? `AS${c.probe_asn}`} · via AS{c.resolver_asn}
+                          </span>
                           {l ? (
                             <span className={`lf-tag lf-tag-${l.verdict}`}>{l.verdict}</span>
                           ) : drafts.has(c.uuid) ? (
@@ -395,21 +453,25 @@ export default function ChangepointLabeler() {
                     </li>
                   );
                 })}
-                {visible.length === 0 && <li className="text-xs text-muted">Everything here is labelled.</li>}
+                {visible.length === 0 && <li className="text-xs text-muted p-2">Everything here is labelled.</li>}
               </ol>
               <p className="text-[0.65rem] text-muted mt-2">
-                <kbd>n</kbd> next · <kbd>p</kbd> previous
+                <kbd>n</kbd> next · <kbd>p</kbd> previous. Labelled = labelled from this browser: the API
+                cannot list labels yet.
               </p>
             </aside>
 
             <main className="min-w-0">
-              {cp && asn && (
+              {cp && (
                 <>
                   <div className="lab-cp-head mb-3">
                     <span className={`lab-cp lab-cp-${cp.state}`}>
                       {cp.layer.toUpperCase()} {cp.state === "BLOCK" ? "blocking started" : "blocking ended"}
                     </span>
                     <span className="tabular-nums font-bold">{isoHour(Date.parse(cp.ts_hour))} UTC</span>
+                    <span>
+                      <span className="font-mono font-bold">{cp.domain}</span> in {country(cp.probe_cc)}
+                    </span>
                     <span>
                       {names.get(cp.probe_asn) ?? `AS${cp.probe_asn}`} AS{cp.probe_asn} · via resolver AS
                       {cp.resolver_asn}
@@ -419,23 +481,42 @@ export default function ChangepointLabeler() {
                     </span>
                     <span className="text-muted font-mono text-[0.65rem]">{cp.uuid}</span>
                   </div>
-                  <Inspector
-                    key={cp.uuid}
-                    title="Evidence"
-                    probeCc={cp.probe_cc}
-                    domain={cp.domain}
-                    asn={asn}
-                    resolverAsn={viewResolver ?? cp.resolver_asn}
-                    onResolverChange={setViewResolver}
-                    focusMs={jump ? jump.ms + (jump.n % 2) : Date.parse(cp.ts_hour)}
-                    win={win!}
-                    names={names}
-                    ooniApi={config.ooniApi}
-                    changepointApi={config.changepointApi}
-                    extraMarks={labelMarks}
-                    onSelectedHourChange={onSelectedHour}
-                    autoScroll={false}
-                  />
+                  {evidence.state === "loading" && (
+                    <div className="card progress-card">
+                      <p className="text-sm mb-2">
+                        Recomputing the detector for {cp.domain} in {country(cp.probe_cc)}
+                        {scope && ` over ${scope.since} → ${scope.until}`}… this can take tens of seconds, and
+                        is reused for every changepoint of the same country and domain.
+                      </p>
+                      <div className="progress-track">
+                        <div className="progress-sweep" />
+                      </div>
+                    </div>
+                  )}
+                  {evidence.state === "error" && (
+                    <div className="card card-error">
+                      <p className="badge-fail text-sm">✕ {evidence.message}</p>
+                    </div>
+                  )}
+                  {evidence.state === "ok" && asn && win && (
+                    <Inspector
+                      key={cp.uuid}
+                      title="Evidence"
+                      probeCc={cp.probe_cc}
+                      domain={cp.domain}
+                      asn={asn}
+                      resolverAsn={viewResolver ?? cp.resolver_asn}
+                      onResolverChange={setViewResolver}
+                      focusMs={jump ? jump.ms + (jump.n % 2) : Date.parse(cp.ts_hour)}
+                      win={win}
+                      names={names}
+                      ooniApi={config.ooniApi}
+                      changepointApi={config.changepointApi}
+                      extraMarks={labelMarks}
+                      onSelectedHourChange={onSelectedHour}
+                      autoScroll={false}
+                    />
+                  )}
                 </>
               )}
             </main>
@@ -468,13 +549,4 @@ export default function ChangepointLabeler() {
       </div>
     </div>
   );
-}
-
-function downloadJson(rows: unknown) {
-  const blob = new Blob([JSON.stringify(rows, null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `changepoint-labels-${new Date().toISOString().slice(0, 19).replace(/:/g, "")}.json`;
-  a.click();
-  URL.revokeObjectURL(a.href);
 }
