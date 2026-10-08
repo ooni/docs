@@ -1,0 +1,67 @@
+# OONI API
+
+> Open data on internet censorship, collected by OONI Probe volunteers worldwide.
+> Start with OONI Findings (curated, human-verified reports). Use the aggregation
+> endpoint for statistics. Do not page through raw measurements.
+
+Base URL: https://api.ooni.io
+
+## Acceptable use
+
+- Most API endpoints are for one-off fetches, but not for live queries issued by users of a third-party application.
+- Bulk ingestion is not allowed. Reach out on https://slack.ooni.org or at contact@ooni.org to discuss receiving a database dump.
+- Periodic fetching must stay under 1 request per second and 1000 requests per day, and cover no more than 1 year of data.
+- For in-depth analysis, use the raw data in S3.
+
+## Rules
+
+- Prefer Findings over drawing your own conclusions from anomaly counts.
+- Do not paginate `/api/v1/measurements` to count results or extract the `anomaly` field. Use `/api/v1/aggregation` instead.
+- Do not loop over countries or tests. Group with `axis_y` (e.g. `axis_y=probe_cc`). For filtering, pass comma-separated values (e.g. `probe_cc=IR,RU,CN`).
+- Anomaly counts on their own are misleading because they scale with measurement volume if not disaggregated by network and target. Read them against `measurement_count` and break them down by target and network (e.g. `axis_y=domain` for web_connectivity).
+- Keep history locally and only re-request recent days.
+
+## Findings
+
+- `GET /api/v1/incidents/search` — list findings. Filters: `country_code`, `asn`, `domain`, `theme`.
+- `GET /api/v1/incidents/show/{id_or_slug}` — one finding with full text.
+
+## Aggregation
+
+`GET /api/v1/aggregation`
+
+- Filters: `probe_cc`, `probe_asn`, `test_name`, `domain`, `since`, `until`
+- Grouping: `axis_x`, `axis_y` (e.g. `measurement_start_day`, `probe_cc`, `probe_asn`, `domain`)
+- Returns: `measurement_count`, `anomaly_count`, `confirmed_count`, `failure_count`, `ok_count`
+
+Examples:
+
+- Websites in one country, per day:
+  `/api/v1/aggregation?probe_cc=IR&test_name=web_connectivity&since=2026-09-01&until=2026-09-28&axis_x=measurement_start_day&axis_y=domain&time_grain=day`
+- One app across all countries, per day:
+  `/api/v1/aggregation?test_name=telegram&since=2026-09-26&until=2026-09-28&axis_x=measurement_start_day&axis_y=probe_cc&time_grain=day`
+
+## Measurements (use sparingly)
+
+- `GET /api/v1/measurements` — only to retrieve `measurement_uid`s. Never paginate beyond a few pages.
+- `GET /api/v1/raw_measurement?measurement_uid={uid}` — one full measurement. If many raw measurements are required access them via S3, see: https://docs.ooni.org/data.
+
+## License and citation
+
+- OONI data is licensed under [CC BY-NC-SA 4.0](https://github.com/ooni/license/blob/master/data/LICENSE.md). Commercial use requires a specific sub-license: contact contact@ooni.org.
+- Cite OONI data as:
+
+```bibtex
+@misc{ooni_data,
+  author       = {{Open Observatory of Network Interference (OONI)}},
+  title        = {OONI Measurement Data},
+  howpublished = {\url{https://ooni.org/data}},
+  note         = {Licensed under CC BY-NC-SA 4.0}
+}
+```
+
+## Optional
+
+- [OpenAPI](https://api.ooni.io/openapi.json)
+- [Accessing OONI data (S3)](https://docs.ooni.org/data)
+- [OONI Explorer](https://explorer.ooni.org)
