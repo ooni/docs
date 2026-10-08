@@ -19,6 +19,13 @@ export default defineConfig({
           target: process.env.OONI_API_PROXY || "http://localhost:8000",
           changeOrigin: true,
         },
+        // The changepoint API (data/changepoint-api) sends no CORS headers,
+        // so the event dashboard reaches it through the dev server too.
+        "/changepoint-api": {
+          target: process.env.CHANGEPOINT_API_PROXY || "http://127.0.0.1:8000",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/changepoint-api/, ""),
+        },
       },
     },
   },
