@@ -49,6 +49,12 @@ const readAuthor = () => {
   }
 };
 
+// A country's flag emoji: its two letters as Unicode regional indicators
+const flag = (cc: string): string =>
+  /^[A-Z]{2}$/.test(cc)
+    ? String.fromCodePoint(...[...cc].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65))
+    : "";
+
 const shiftDay = (d: string, days: number) => isoDay(Date.parse(d + "T00:00:00Z") + days * DAY_MS);
 
 // The window a changepoint is judged over: the queue's range plus a week on
@@ -402,7 +408,7 @@ export default function ChangepointLabeler() {
                   <option value="">all countries</option>
                   {countries.map((cc) => (
                     <option key={cc} value={cc}>
-                      {cc} {country(cc)}
+                      {flag(cc)} {cc} {country(cc)}
                     </option>
                   ))}
                 </select>
@@ -437,7 +443,8 @@ export default function ChangepointLabeler() {
                           </span>
                         </span>
                         <span className="block truncate text-xs">
-                          <strong>{c.probe_cc}</strong> <span className="font-mono">{c.domain}</span>
+                          <span aria-hidden="true">{flag(c.probe_cc)}</span> <strong>{c.probe_cc}</strong>{" "}
+                          <span className="font-mono">{c.domain}</span>
                         </span>
                         <span className="flex items-baseline justify-between gap-1 text-xs text-muted">
                           <span className="truncate">
@@ -470,7 +477,8 @@ export default function ChangepointLabeler() {
                     </span>
                     <span className="tabular-nums font-bold">{isoHour(Date.parse(cp.ts_hour))} UTC</span>
                     <span>
-                      <span className="font-mono font-bold">{cp.domain}</span> in {country(cp.probe_cc)}
+                      <span className="font-mono font-bold">{cp.domain}</span> in{" "}
+                      <span aria-hidden="true">{flag(cp.probe_cc)}</span> {country(cp.probe_cc)}
                     </span>
                     <span>
                       {names.get(cp.probe_asn) ?? `AS${cp.probe_asn}`} AS{cp.probe_asn} · via resolver AS
