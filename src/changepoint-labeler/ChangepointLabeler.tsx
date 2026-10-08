@@ -484,9 +484,6 @@ export default function ChangepointLabeler() {
                       {names.get(cp.probe_asn) ?? `AS${cp.probe_asn}`} AS{cp.probe_asn} · via resolver AS
                       {cp.resolver_asn}
                     </span>
-                    <span className="text-muted tabular-nums">
-                      evidence {(cp.state === "BLOCK" ? cp.s_pos : cp.s_neg).toFixed(1)} vs threshold {cp.h}
-                    </span>
                     <span className="text-muted font-mono text-[0.65rem]">{cp.uuid}</span>
                   </div>
                   {evidence.state === "loading" && (
