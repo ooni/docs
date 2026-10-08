@@ -11,7 +11,8 @@ export const PAD = { top: 10, right: 8, bottom: 22, left: 46 };
 export interface ChartMark {
   ms: number;
   label: string;
-  tone: "block" | "ok";
+  // block / ok: a detected changepoint; label: a time set by a labeller
+  tone: "block" | "ok" | "label";
 }
 
 // A stretch of detector state, painted faintly behind the bars

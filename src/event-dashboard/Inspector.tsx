@@ -63,7 +63,14 @@ interface Props {
   names: Map<number, string>;
   ooniApi: string;
   changepointApi: string;
-  onClose: () => void;
+  // no close link when left out (the inspector is the page's main view)
+  onClose?: () => void;
+  // drawn on every chart next to the changepoints, e.g. a label's times
+  extraMarks?: ChartMark[];
+  onSelectedHourChange?: (hourMs: number | null) => void;
+  // scroll into view when opening on a new pair or hour (default true)
+  autoScroll?: boolean;
+  title?: string;
 }
 
 export default function Inspector({
@@ -78,6 +85,10 @@ export default function Inspector({
   ooniApi,
   changepointApi,
   onClose,
+  extraMarks = [],
+  onSelectedHourChange,
+  autoScroll = true,
+  title = "Inspector",
 }: Props) {
   const scope: PairScope = useMemo(
     () => ({
@@ -95,8 +106,8 @@ export default function Inspector({
   // Bring the inspector into view whenever it opens on a new pair or hour
   const rootRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [scopeKey, focusMs]);
+    if (autoScroll) rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [scopeKey, focusMs, autoScroll]);
 
   const rules = useLoad<RuleCountsResponse>((s) => fetchRuleCounts(changepointApi, scope, s), [scopeKey, changepointApi]);
   const fastpath = useLoad<FastpathRow[]>((s) => fetchFastpathHourly(ooniApi, scope, s), [scopeKey, ooniApi]);
@@ -139,11 +150,12 @@ export default function Inspector({
   const marksFor = (layer: Layer | null): ChartMark[] =>
     (track?.events ?? [])
       .filter((e) => layer === null || e.layer === layer)
-      .map((e) => ({
+      .map((e): ChartMark => ({
         ms: Date.parse(e.ts_hour),
         label: `${e.layer.toUpperCase()} ${e.state === "BLOCK" ? "▲" : "▼"}`,
         tone: e.state === "BLOCK" ? "block" : "ok",
-      }));
+      }))
+      .concat(extraMarks);
 
   // What the detector believed about each layer of this pair, hour by hour
   const statesByLayer = useMemo(() => {
@@ -220,6 +232,7 @@ export default function Inspector({
   }, [selected, scopeKey, scope, ooniApi, hourLimit, obsAgg, obsHours]);
 
   const select = (h: number) => setSelected(h);
+  useEffect(() => onSelectedHourChange?.(selected), [selected, onSelectedHourChange]);
 
   const resolverOptions = asn.tracks
     .filter((t) => t.nMeasurements > 0 || t.events.length > 0)
@@ -230,7 +243,7 @@ export default function Inspector({
     <section ref={rootRef} className="card inspector mb-6">
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
         <div>
-          <h2 className="card-title mb-1">Inspector</h2>
+          <h2 className="card-title mb-1">{title}</h2>
           <div className="text-lg font-black leading-tight">
             {name ?? `AS${asn.asn}`} <span className="text-muted font-medium text-sm">AS{asn.asn}</span>
           </div>
@@ -263,9 +276,11 @@ export default function Inspector({
           >
             Explorer chart
           </a>
-          <button type="button" className="link" onClick={onClose}>
-            close
-          </button>
+          {onClose && (
+            <button type="button" className="link" onClick={onClose}>
+              close
+            </button>
+          )}
         </div>
       </div>
 

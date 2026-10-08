@@ -584,6 +584,14 @@
 .hb-mark-ok {
   stroke: var(--ok-line);
 }
+.hb-mark-label {
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: none;
+}
+.hb-mark-text-label {
+  fill: var(--accent);
+}
 .hb-mark-text {
   font-size: 8.5px;
   font-weight: 900;
