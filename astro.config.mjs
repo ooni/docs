@@ -16,13 +16,20 @@ export default defineConfig({
       // dev we proxy /api to a locally running oonimeasurements instance.
       proxy: {
         "/api": {
-          target: process.env.OONI_API_PROXY || "http://localhost:8000",
+          target: process.env.OONI_API_PROXY || "http://localhost:8001",
           changeOrigin: true,
+        },
+        // The OONI measurement endpoints only allow CORS from *.ooni.org,
+        // so the event dashboard reaches api.ooni.org through here in dev.
+        "/ooni-api": {
+            target: process.env.OONI_API_UPSTREAM || "http://localhost:8000",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/ooni-api/, ""),
         },
         // The changepoint API (data/changepoint-api) sends no CORS headers,
         // so the event dashboard reaches it through the dev server too.
         "/changepoint-api": {
-          target: process.env.CHANGEPOINT_API_PROXY || "http://127.0.0.1:8000",
+          target: process.env.CHANGEPOINT_API_PROXY || "http://127.0.0.1:8001",
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/changepoint-api/, ""),
         },

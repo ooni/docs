@@ -128,12 +128,13 @@ function AnalysisDetail({ analysis }: { analysis: MeasurementAnalysis }) {
 // The measurement verdict: the analysis engine's blocked/ok call with the
 // fastpath verdict directly underneath, expandable into the per-layer scores
 // that produced the analysis call. When /v1/analysis has nothing yet only
-// fastpath is shown.
+// fastpath is shown; without meta (callers that only have the fastpath as
+// aggregate counts) the fastpath row is left out.
 export default function VerdictSection({
   meta,
   analysis,
 }: {
-  meta: MeasurementMeta;
+  meta: MeasurementMeta | null;
   analysis: MeasurementAnalysis | null;
 }) {
   return (
@@ -152,14 +153,16 @@ export default function VerdictSection({
               )}
             </td>
           </tr>
-          <tr>
-            <th scope="row" className="w-24">
-              Fastpath
-            </th>
-            <td className="text-sm">
-              <FastpathVerdict meta={meta} />
-            </td>
-          </tr>
+          {meta && (
+            <tr>
+              <th scope="row" className="w-24">
+                Fastpath
+              </th>
+              <td className="text-sm">
+                <FastpathVerdict meta={meta} />
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
 
