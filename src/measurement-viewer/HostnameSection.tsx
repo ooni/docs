@@ -23,7 +23,7 @@ import type {
 
 const fmt = new Intl.NumberFormat("en-US");
 
-function StatusBadge({
+export function StatusBadge({
   ok,
   okLabel,
   failLabel,
@@ -40,7 +40,7 @@ function StatusBadge({
 }
 
 // "control: 3 ok · 1 failed" line shown under the probe's own result
-function CtrlCounts({
+export function CtrlCounts({
   success,
   failure,
   missing,
@@ -60,7 +60,7 @@ function CtrlCounts({
   );
 }
 
-function AsnLabel({
+export function AsnLabel({
   asn,
   orgName,
 }: {
@@ -145,7 +145,7 @@ function AnswerConsistencyChips({ status }: { status: AnswerStatus }) {
   );
 }
 
-function CtrlResolutionBlock({
+export function CtrlResolutionBlock({
   hostname,
   showHostname,
   ctrlEntries,
@@ -222,7 +222,22 @@ function CtrlResolutionBlock({
   );
 }
 
-function DnsSection({ group }: { group: TargetGroup }) {
+export interface CtrlBlockProps {
+  hostname: string;
+  showHostname: boolean;
+  ctrlEntries: CtrlGroundTruthEntry[];
+  probeIPs: Set<string>; // probe DNS answers for this hostname
+}
+
+// renderCtrl replaces the control panel of each hostname; the viewer itself
+// always shows the full CtrlResolutionBlock
+export function DnsSection({
+  group,
+  renderCtrl = (p) => <CtrlResolutionBlock {...p} />,
+}: {
+  group: TargetGroup;
+  renderCtrl?: (p: CtrlBlockProps) => React.ReactNode;
+}) {
   const ctrl = useMemo(() => indexCtrlByHostname(group.ctrl), [group.ctrl]);
   const multiHost = group.hostnames.length > 1;
   if (group.dnsByResolver.length === 0 && group.ctrl.length === 0) return null;
@@ -319,13 +334,14 @@ function DnsSection({ group }: { group: TargetGroup }) {
           ) : (
             <div className="space-y-3">
               {ctrlHostnames.map((h) => (
-                <CtrlResolutionBlock
-                  key={h}
-                  hostname={h}
-                  showHostname={multiHost}
-                  ctrlEntries={ctrl.entries.get(h) ?? []}
-                  probeIPs={probeIPsByHost.get(h) ?? new Set()}
-                />
+                <div key={h}>
+                  {renderCtrl({
+                    hostname: h,
+                    showHostname: multiHost,
+                    ctrlEntries: ctrl.entries.get(h) ?? [],
+                    probeIPs: probeIPsByHost.get(h) ?? new Set(),
+                  })}
+                </div>
               ))}
             </div>
           )}
@@ -335,7 +351,7 @@ function DnsSection({ group }: { group: TargetGroup }) {
   );
 }
 
-function HttpCell({ o }: { o: WebObservation }) {
+export function HttpCell({ o }: { o: WebObservation }) {
   if (!hasHTTP(o)) return <span className="text-muted">—</span>;
   return (
     <div>
@@ -474,7 +490,7 @@ function EndpointsSection({ group }: { group: TargetGroup }) {
   );
 }
 
-function StandaloneHttpSection({ group }: { group: TargetGroup }) {
+export function StandaloneHttpSection({ group }: { group: TargetGroup }) {
   if (group.standaloneHTTP.length === 0) return null;
   return (
     <section className="card">
