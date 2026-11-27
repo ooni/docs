@@ -1,0 +1,204 @@
+/* Changepoint labeler: layout and form, on top of the event dashboard's
+   tokens and components (event-dashboard.css) */
+
+.lab-wrap {
+  max-width: 1560px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.lab-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+@media (min-width: 1200px) {
+  .lab-grid {
+    grid-template-columns: 240px minmax(0, 1fr) 320px;
+  }
+  .lab-queue,
+  .lab-form {
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+}
+
+.lab-queue,
+.lab-form {
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  padding: 0.75rem;
+}
+.lab-form {
+  border-width: 2px;
+}
+
+.lab-list {
+  border: 1px solid var(--edge);
+}
+.lab-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.78rem;
+  border-bottom: 1px solid var(--seam);
+}
+.lab-list li:last-child .lab-item {
+  border-bottom: none;
+}
+.lab-item:hover {
+  background: var(--inspect-bg);
+}
+.lab-item-on {
+  background: var(--text-primary);
+  color: var(--page);
+}
+.lab-item-on .text-muted {
+  color: inherit;
+  opacity: 0.7;
+}
+
+/* the detector's call: a blocking onset is loud, an end is quiet */
+.lab-cp {
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  padding: 0 0.3rem;
+}
+.lab-cp-BLOCK {
+  background: var(--block);
+  color: var(--block-text);
+}
+.lab-cp-OK {
+  border: 1px solid var(--ok-line);
+  color: var(--ok-text);
+}
+.lab-item-on .lab-cp-OK {
+  color: inherit;
+  border-color: currentColor;
+}
+.lab-cp-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.9rem;
+  font-size: 0.85rem;
+  border: 2px solid var(--edge);
+  padding: 0.5rem 0.7rem;
+  background: var(--surface);
+}
+
+kbd {
+  font-family: ui-monospace, monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  border: 1px solid var(--seam);
+  padding: 0 0.25rem;
+  margin-left: 0.25rem;
+  color: var(--text-muted);
+}
+
+/* the guided form */
+.lf-step {
+  padding: 0.6rem 0 0.8rem;
+  border-bottom: 1px solid var(--seam);
+}
+.lf-step:first-child {
+  padding-top: 0;
+}
+.lf-step-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-bottom: 0.35rem;
+}
+.lf-step-n {
+  flex: none;
+  width: 1.2rem;
+  height: 1.2rem;
+  line-height: 1.2rem;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 900;
+  border: 1.5px solid var(--edge);
+}
+.lf-step-done {
+  background: var(--text-primary);
+  color: var(--page);
+}
+.lf-help {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.4rem;
+}
+
+.lf-verdicts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+.lf-verdict {
+  padding: 0.5rem 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--edge);
+  background: var(--surface);
+}
+.lf-verdict + .lf-verdict {
+  border-left: none;
+}
+.lf-verdict-on.lf-verdict-blocked {
+  background: var(--block);
+  border-color: var(--block);
+  color: var(--block-text);
+}
+.lf-verdict-on.lf-verdict-ok {
+  background: var(--ok-line);
+  border-color: var(--ok-line);
+  color: #fff;
+}
+.lf-verdict-on.lf-verdict-undecided {
+  background: var(--text-primary);
+  color: var(--page);
+}
+.lf-verdict-on kbd {
+  color: inherit;
+  border-color: currentColor;
+}
+
+.lf-time {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.5rem;
+}
+
+.lf-tag {
+  font-size: 0.6rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0 0.3rem;
+  border: 1px solid var(--seam);
+}
+.lf-tag-blocked {
+  background: var(--block);
+  border-color: var(--block);
+  color: var(--block-text);
+}
+.lf-tag-ok {
+  color: var(--ok-text);
+  border-color: currentColor;
+}
+.lf-tag-undecided {
+  color: var(--text-primary);
+  border-color: currentColor;
+}
+.lf-history {
+  padding-top: 0.6rem;
+}
